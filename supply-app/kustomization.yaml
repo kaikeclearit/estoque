@@ -5,3 +5,5 @@ resources:
   - postgres-deployment.yaml
   - supply-app-deployment.yaml
   - supply-app-service.yaml
+  - deployment.yaml
+  - network.yaml
