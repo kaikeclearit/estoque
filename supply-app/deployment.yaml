@@ -14,7 +14,7 @@ spec:
         app: estoque-nginx
     spec:
       containers:
-      - name: django-app # (pode manter o nome ou mudar para django-app)
-        image: kaikeclear/estoque-app:v2
+      - name: nginx
+        image: kaikeclear/estoque-app:v3
         ports:
         - containerPort: 8000

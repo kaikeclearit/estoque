@@ -1,21 +1,23 @@
-# Usa uma imagem oficial do Python super leve
 FROM python:3.12-slim
 
-# Define a pasta de trabalho dentro do container
-WORKDIR /app
+# Define a pasta raiz do container
+WORKDIR /app_root
 
-# Instala as dependências do sistema necessárias para o banco de dados (opcional, mas recomendado)
+# Instala as dependências do sistema
 RUN apt-get update && apt-get install -y gcc libpq-dev && rm -rf /var/lib/apt/lists/*
 
-# Copia o arquivo de requisitos e instala as bibliotecas Python
+# Copia os requisitos e instala
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia todo o resto do código da sua máquina para dentro do container
+# Copia todo o resto do projeto
 COPY . .
 
-# Expõe a porta 8000 (padrão do Django)
+# MUDA A PASTA DE TRABALHO PARA ONDE O MANAGE.PY REALMENTE ESTÁ!
+WORKDIR /app_root/app
+
+# Expõe a porta 8000
 EXPOSE 8000
 
-# Comando que o container vai rodar quando ligar
+# Agora o manage.py está na mesma pasta que o comando
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
