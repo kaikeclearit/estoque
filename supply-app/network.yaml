@@ -5,11 +5,11 @@ metadata:
   namespace: lab-tjce-bqzsv
 spec:
   selector:
-    app: estoque-nginx
+    app: estoque-nginx # (ou o nome que estiver no selector do seu deployment)
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 80
+      targetPort: 8000
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress

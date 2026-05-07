@@ -1,42 +1,21 @@
-# Dockerfile
-FROM python:3.11-slim
+# Usa uma imagem oficial do Python super leve
+FROM python:3.12-slim
 
-# Evita que o Python gere arquivos .pyc e bufferize logs
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-
+# Define a pasta de trabalho dentro do container
 WORKDIR /app
 
-# Instala dependências do sistema necessárias para o Postgres e compiladores
-RUN apt-get update && apt-get install -y \
-    gcc \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Instala as dependências do sistema necessárias para o banco de dados (opcional, mas recomendado)
+RUN apt-get update && apt-get install -y gcc libpq-dev && rm -rf /var/lib/apt/lists/*
 
-
-RUN pip install --upgrade pip
-
-
-# Instala as dependências Python
+# Copia o arquivo de requisitos e instala as bibliotecas Python
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia o projeto para dentro do container
-COPY ./app /app
+# Copia todo o resto do código da sua máquina para dentro do container
+COPY . .
 
-# (Opcional) Cria um usuário não-root por segurança
-# RUN useradd -m myuser
-# USER myuser
+# Expõe a porta 8000 (padrão do Django)
+EXPOSE 8000
 
-# Comando padrão (será sobrescrito pelo docker-compose, mas bom ter)
-CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:8000"]
-
-# Start with the official NGINX image
-FROM nginx:alpine
-
-# Copy everything from your local repo folder 
-# into the folder NGINX uses to serve websites
-COPY . /usr/share/nginx/html
-
-# Expose port 80
-EXPOSE 80
+# Comando que o container vai rodar quando ligar
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
