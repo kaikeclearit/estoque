@@ -30,3 +30,13 @@ COPY ./app /app
 
 # Comando padrão (será sobrescrito pelo docker-compose, mas bom ter)
 CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:8000"]
+
+# Start with the official NGINX image
+FROM nginx:alpine
+
+# Copy everything from your local repo folder 
+# into the folder NGINX uses to serve websites
+COPY . /usr/share/nginx/html
+
+# Expose port 80
+EXPOSE 80

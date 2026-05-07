@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: estoque-nginx
+  namespace: lab-tjce-bqzsv
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: estoque-nginx
+  template:
+    metadata:
+      labels:
+        app: estoque-nginx
+    spec:
+      containers:
+      - name: nginx
+        # Put YOUR image name here!
+        image: kaikeclear/estoque-app:v1
+        ports:
+        - containerPort: 80
