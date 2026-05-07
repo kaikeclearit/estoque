@@ -1,2 +1,3 @@
 .env*
 *.xlsx
+supply-secret.yaml
