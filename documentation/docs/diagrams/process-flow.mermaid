@@ -1,0 +1,99 @@
+graph TD
+    Start([Usuário Acessa Sistema]) --> Login{Autenticação}
+    
+    Login -->|Senha Local| LocalAuth[Valida Credenciais Django]
+    Login -->|Microsoft SSO| AzureAuth[Redireciona para Azure AD]
+    
+    LocalAuth --> CheckPerms{Verificar Permissões}
+    AzureAuth --> SyncPerms[Sincroniza Grupos por JobTitle]
+    SyncPerms --> CheckPerms
+    
+    CheckPerms -->|Gestor| DashboardGestor[Dashboard Completo]
+    CheckPerms -->|Usuário| DashboardUser[Dashboard Somente Leitura]
+    
+    DashboardGestor --> Actions{Escolher Ação}
+    
+    Actions -->|Entrada de Material| EntryFlow[Fluxo de Entrada]
+    Actions -->|Saída de Material| OutFlow[Fluxo de Saída]
+    Actions -->|Gerenciar Produtos| ProductFlow[CRUD Produtos]
+    Actions -->|Gerenciar Clientes| ClientFlow[CRUD Clientes]
+    
+    %% FLUXO DE ENTRADA
+    EntryFlow --> FillEntry[Preencher Formulário Entrada]
+    FillEntry --> EntryData[Produto, Tipo, NF, Local, Qtd]
+    EntryData --> SaveEntry{Salvar Entrada}
+    
+    SaveEntry -->|Transação Atômica| LockStock1[select_for_update ProductStock]
+    LockStock1 --> UpdateStock1[quantity += entrada.quantity]
+    UpdateStock1 --> CommitEntry[Commit Transação]
+    CommitEntry --> LogEntry[Registra Auditoria]
+    LogEntry --> SuccessEntry[✅ Entrada Registrada]
+    
+    %% FLUXO DE SAÍDA
+    OutFlow --> FillOut[Preencher Formulário Saída]
+    FillOut --> OutData[Produto, Local, Cliente, Qtd, Tipo]
+    OutData --> CheckType{Tipo de Saída?}
+    
+    CheckType -->|SAIDA/EMPRESTIMO/DESCARTE| NormalOut[Saída Normal]
+    CheckType -->|RESERVA| ReserveOut[Saída com Reserva]
+    
+    NormalOut --> ValidateStock{Validar Estoque}
+    ReserveOut --> ValidateStock
+    
+    ValidateStock -->|Transação Atômica| LockStock2[select_for_update ProductStock]
+    LockStock2 --> CheckQty{quantity >= saída.quantity?}
+    
+    CheckQty -->|Sim| DeductStock[quantity -= saída.quantity]
+    CheckQty -->|Não| ErrorOut[❌ Estoque Insuficiente]
+    
+    DeductStock --> CommitOut[Commit Transação]
+    CommitOut --> SaveOut[Salvar StockOut]
+    
+    SaveOut --> IsReserve{É Reserva?}
+    IsReserve -->|Sim| TriggerSignal[Signal: post_save]
+    IsReserve -->|Não| SuccessOut[✅ Saída Registrada]
+    
+    TriggerSignal --> CreateToken[Criar ReservationToken]
+    CreateToken --> GenUUID[Gerar UUID + expires_at]
+    GenUUID --> SendWebhook[Enviar Webhook Make.com]
+    
+    SendWebhook --> EmailSent[📧 Email Enviado]
+    EmailSent --> WaitAction{Aguardar Ação}
+    
+    WaitAction -->|Confirmar| ConfirmURL[Acessar URL Confirmação]
+    WaitAction -->|Cancelar| CancelURL[Acessar URL Cancelamento]
+    WaitAction -->|7 dias| ExpireToken[Token Expira]
+    
+    ConfirmURL --> ValidateToken1{Token Válido?}
+    ValidateToken1 -->|Sim| ConvertReserve[movement_type = SAIDA]
+    ValidateToken1 -->|Não| ErrorToken1[❌ Token Inválido/Expirado]
+    ConvertReserve --> MarkConfirmed[confirmed=True, action=CONFIRMED]
+    MarkConfirmed --> SuccessConfirm[✅ Retirada Confirmada]
+    
+    CancelURL --> ValidateToken2{Token Válido?}
+    ValidateToken2 -->|Sim| ReturnStock[Devolver Estoque]
+    ValidateToken2 -->|Não| ErrorToken2[❌ Token Inválido/Expirado]
+    ReturnStock --> MarkCancelled[confirmed=True, action=CANCELLED]
+    MarkCancelled --> SuccessCancel[✅ Reserva Cancelada]
+    
+    %% REVERSÃO DE SAÍDA
+    DashboardGestor --> HistoryView[Ver Histórico Movimentações]
+    HistoryView --> SelectOut[Selecionar Saída]
+    SelectOut --> ReverseAction{Reverter?}
+    
+    ReverseAction -->|Sim| ConfirmReverse[Confirmar Reversão]
+    ConfirmReverse --> LockStock3[Transação Atômica + select_for_update]
+    LockStock3 --> ReturnQty[quantity += saída.quantity]
+    ReturnQty --> MarkReversed[is_cancelled=True, cancelled_by, cancelled_at]
+    MarkReversed --> SuccessReverse[✅ Saída Revertida]
+    
+    %% ESTILOS
+    classDef successClass fill:#d4edda,stroke:#28a745,stroke-width:2px
+    classDef errorClass fill:#f8d7da,stroke:#dc3545,stroke-width:2px
+    classDef processClass fill:#d1ecf1,stroke:#0c5460,stroke-width:2px
+    classDef decisionClass fill:#fff3cd,stroke:#856404,stroke-width:2px
+    
+    class SuccessEntry,SuccessOut,SuccessConfirm,SuccessCancel,SuccessReverse successClass
+    class ErrorOut,ErrorToken1,ErrorToken2 errorClass
+    class LockStock1,LockStock2,LockStock3,UpdateStock1,DeductStock processClass
+    class Login,CheckPerms,CheckType,ValidateStock,CheckQty,IsReserve,WaitAction,ValidateToken1,ValidateToken2,ReverseAction decisionClass

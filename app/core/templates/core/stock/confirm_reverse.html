@@ -1,0 +1,80 @@
+<!-- app/core/templates/core/stock/confirm_reverse.html -->
+
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-warning text-dark text-center py-4">
+                    <h2 class="mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Reverter Saída
+                    </h2>
+                </div>
+                
+                <div class="card-body p-5">
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-circle me-2"></i>
+                        <strong>Atenção!</strong> Você está prestes a reverter uma saída de estoque.
+                    </div>
+                    
+                    <h4 class="mb-4">Detalhes da Saída:</h4>
+                    
+                    <table class="table table-bordered">
+                        <tr>
+                            <th width="40%" class="bg-light">Equipamento:</th>
+                            <td><strong>{{ stock_out.product.name }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Cliente:</th>
+                            <td>{{ stock_out.client.name }}</td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Quantidade:</th>
+                            <td><strong class="text-danger">{{ stock_out.quantity }} unidade(s)</strong></td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Local:</th>
+                            <td>{{ stock_out.get_location_display }}</td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Data da Saída:</th>
+                            <td>{{ stock_out.created_at|date:"d/m/Y H:i" }}</td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Responsável:</th>
+                            <td>{{ stock_out.employee.get_full_name }}</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="alert alert-warning mt-4">
+                        <strong>O que vai acontecer:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>{{ stock_out.quantity }} unidade(s) será(ão) devolvida(s) ao estoque de {{ stock_out.get_location_display }}</li>
+                            <li>A saída será marcada como <strong>CANCELADA</strong></li>
+                            <li>Esta ação ficará registrada para auditoria</li>
+                            <li><strong>Esta ação NÃO pode ser desfeita</strong></li>
+                        </ul>
+                    </div>
+                    
+                    <form method="post" class="mt-4">
+                        {% csrf_token %}
+                        <div class="d-grid gap-3">
+                            <button type="submit" class="btn btn-danger btn-lg">
+                                <i class="bi bi-arrow-counterclockwise me-2"></i>
+                                Sim, reverter saída e devolver ao estoque
+                            </button>
+                            <a href="{% url 'movements_list' %}" class="btn btn-outline-secondary btn-lg">
+                                <i class="bi bi-x-lg me-2"></i>
+                                Cancelar (não reverter)
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

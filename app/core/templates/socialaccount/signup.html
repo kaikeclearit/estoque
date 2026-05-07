@@ -1,0 +1,52 @@
+{% extends "core/base.html" %}
+{% load i18n %}
+
+{% block content %}
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="card shadow-lg border-0" style="max-width: 500px; width: 100%;">
+        <div class="card-header bg-primary text-white text-center py-4">
+            <h3 class="mb-0"><i class="bi bi-microsoft"></i> Finalizar Cadastro</h3>
+        </div>
+        
+        <div class="card-body p-5">
+            <p class="text-center text-muted mb-4">
+                Você autenticou com sucesso via <strong>{{ account.get_provider.name }}</strong>.
+                <br>Confirme seus dados para acessar o sistema.
+            </p>
+
+            <form class="signup" id="signup_form" method="post" action="{% url 'socialaccount_signup' %}">
+                {% csrf_token %}
+                
+                {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label fw-bold">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <div class="form-text small">{{ field.help_text }}</div>
+                    {% endif %}
+                    {% for error in field.errors %}
+                        <div class="text-danger small">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+
+                {% if redirect_field_value %}
+                <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
+                {% endif %}
+
+                <div class="d-grid gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        Concluir Cadastro & Entrar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('input, select, textarea').forEach(function(input) {
+        input.classList.add('form-control');
+    });
+</script>
+{% endblock %}

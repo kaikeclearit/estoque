@@ -1,0 +1,108 @@
+graph TB
+    subgraph "Frontend Layer"
+        Browser[Web Browser]
+        Templates[Django Templates]
+        Static[Static Files CSS/JS]
+    end
+    
+    subgraph "Load Balancer / Reverse Proxy"
+        Nginx[Nginx Container<br/>Port 80/443]
+    end
+    
+    subgraph "Application Layer"
+        Gunicorn[Gunicorn WSGI Server<br/>Port 8000]
+        
+        subgraph "Django Application"
+            URLs[URL Router<br/>urls.py]
+            
+            subgraph "Views Layer"
+                ProductsView[products.py<br/>CRUD Produtos]
+                ClientsView[clients.py<br/>CRUD Clientes]
+                MovementsView[movements.py<br/>Entradas/Saídas]
+                ReservationsView[reservations.py<br/>Confirmação Reservas]
+                APIView[api.py<br/>JSON Endpoints]
+            end
+            
+            subgraph "Business Logic"
+                Models[Models<br/>Employee, Product, Stock...]
+                Forms[Forms<br/>Validações]
+                Signals[Signals<br/>Eventos Automáticos]
+                Services[Services<br/>webhook_service.py]
+            end
+            
+            subgraph "Security & Auth"
+                AuthMiddleware[Authentication Middleware]
+                PermMiddleware[Permission System]
+                Allauth[Django Allauth<br/>Microsoft SSO]
+            end
+        end
+    end
+    
+    subgraph "Data Layer"
+        PostgreSQL[(PostgreSQL 15<br/>Database)]
+        VolStatic[Static Volume]
+        VolMedia[Media Volume]
+        VolDB[Postgres Data Volume]
+    end
+    
+    subgraph "External Services"
+        AzureAD[Microsoft Azure AD<br/>Single Sign-On]
+        MakeWebhook[Make.com Webhook<br/>Email Service]
+    end
+    
+    %% Connections
+    Browser -->|HTTP/HTTPS| Nginx
+    Nginx -->|Proxy Pass| Gunicorn
+    Nginx -->|Serve| Static
+    Nginx -->|Serve| VolStatic
+    Nginx -->|Serve| VolMedia
+    
+    Gunicorn --> URLs
+    URLs --> ProductsView
+    URLs --> ClientsView
+    URLs --> MovementsView
+    URLs --> ReservationsView
+    URLs --> APIView
+    
+    ProductsView --> Models
+    ClientsView --> Models
+    MovementsView --> Models
+    ReservationsView --> Models
+    APIView --> Models
+    
+    ProductsView --> Forms
+    ClientsView --> Forms
+    MovementsView --> Forms
+    
+    Models --> PostgreSQL
+    
+    Models -->|Trigger| Signals
+    Signals --> Services
+    Services -->|POST| MakeWebhook
+    
+    URLs --> AuthMiddleware
+    AuthMiddleware --> PermMiddleware
+    PermMiddleware --> Allauth
+    
+    Allauth <-->|OAuth 2.0| AzureAD
+    
+    Models -->|ORM| PostgreSQL
+    PostgreSQL --- VolDB
+    
+    ProductsView --> Templates
+    ClientsView --> Templates
+    MovementsView --> Templates
+    ReservationsView --> Templates
+    
+    %% Styles
+    classDef frontend fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    classDef app fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef data fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef security fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    
+    class Browser,Templates,Static frontend
+    class Nginx,Gunicorn,URLs,ProductsView,ClientsView,MovementsView,ReservationsView,APIView,Models,Forms,Signals,Services app
+    class PostgreSQL,VolStatic,VolMedia,VolDB data
+    class AzureAD,MakeWebhook external
+    class AuthMiddleware,PermMiddleware,Allauth security

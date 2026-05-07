@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    command: gunicorn setup.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - ./app:/app            # Hot-reload (opcional em prod, útil em dev)
+      - static_volume:/app/static  # Compartilha estáticos com o Nginx
+      - media_volume:/app/media    # Compartilha uploads com o Nginx
+    env_file:
+      - .env
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=meubanco
+      - POSTGRES_USER=usuario
+      - POSTGRES_PASSWORD=senha_secreta
+
+  nginx:
+    build: ./nginx
+    volumes:
+      - static_volume:/app/static  # Nginx lê daqui
+      - media_volume:/app/media    # Nginx lê daqui
+    ports:
+      - "80:80"
+    depends_on:
+      - web
+
+volumes:
+  postgres_data:
+  static_volume:
+  media_volume:

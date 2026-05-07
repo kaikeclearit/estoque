@@ -1,0 +1,16 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="d-flex align-items-center justify-content-center" style="min-height: 60vh;">
+    <div class="text-center">
+        <h1 class="display-1 fw-bold text-primary">404</h1>
+        <p class="fs-3"> <span class="text-danger">Oops!</span> Página não encontrada.</p>
+        <p class="lead mb-4">
+            A página que você está procurando não existe ou foi movida.
+        </p>
+        <a href="{% url 'product_list' %}" class="btn btn-primary btn-lg">
+            Voltar para o Início
+        </a>
+    </div>
+</div>
+{% endblock %}

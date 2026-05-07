@@ -1,0 +1,43 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-body text-center py-5">
+                    <div class="mb-4">
+                        <i class="bi bi-clock-history text-warning" style="font-size: 100px;"></i>
+                    </div>
+                    
+                    <h2 class="text-warning mb-3">Link Expirado</h2>
+                    
+                    <p class="lead text-muted mb-4">
+                        Este link de confirmação expirou e não pode mais ser utilizado.
+                    </p>
+                    
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Os links de confirmação são válidos por <strong>7 dias</strong> após o envio do email.
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <strong>O que fazer agora?</strong>
+                        <ul class="text-start mb-0 mt-2">
+                            <li>Entre em contato com o gestor de estoque</li>
+                            <li>Ou acesse o sistema diretamente para ajustar a movimentação</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="d-grid gap-2 mt-4">
+                        <a href="{% url 'home' %}" class="btn btn-primary btn-lg">
+                            <i class="bi bi-house-door me-2"></i>
+                            Ir para o Sistema
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

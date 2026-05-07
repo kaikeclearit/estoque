@@ -1,0 +1,71 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-success text-white text-center py-4">
+                    <h2 class="mb-0">
+                        <i class="bi bi-check-circle me-2"></i>
+                        Confirmar Utilização do Equipamento
+                    </h2>
+                </div>
+                
+                <div class="card-body p-5">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Você está prestes a confirmar que o equipamento <strong>FOI UTILIZADO</strong> no serviço.
+                    </div>
+                    
+                    <h4 class="mb-4">Detalhes da Reserva:</h4>
+                    
+                    <table class="table table-bordered">
+                        <tr>
+                            <th width="40%" class="bg-light">Equipamento:</th>
+                            <td><strong>{{ stock_out.product.name }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Cliente:</th>
+                            <td>{{ stock_out.client.name }}</td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Quantidade:</th>
+                            <td>{{ stock_out.quantity }} unidade(s)</td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Local:</th>
+                            <td>{{ stock_out.get_location_display }}</td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Data da Reserva:</th>
+                            <td>{{ stock_out.created_at|date:"d/m/Y H:i" }}</td>
+                        </tr>
+                        {% if stock_out.scheduled_date %}
+                        <tr>
+                            <th class="bg-light">Data Prevista:</th>
+                            <td>{{ stock_out.scheduled_date|date:"d/m/Y" }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                    
+                    <form method="post" class="mt-4">
+                        {% csrf_token %}
+                        <div class="d-grid gap-3">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="bi bi-check-lg me-2"></i>
+                                Sim, confirmo que o equipamento foi utilizado
+                            </button>
+                            <a href="{% url 'cancel_reservation' stock_out.confirmation_token.token %}" 
+                               class="btn btn-outline-danger btn-lg">
+                                <i class="bi bi-x-lg me-2"></i>
+                                Na verdade, não foi utilizado
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-body text-center py-5">
+                    <div class="mb-4">
+                        {% if action == 'CONFIRMED' %}
+                            <i class="bi bi-check-circle-fill text-success" style="font-size: 100px;"></i>
+                        {% else %}
+                            <i class="bi bi-x-circle-fill text-danger" style="font-size: 100px;"></i>
+                        {% endif %}
+                    </div>
+                    
+                    <h2 class="mb-3">Ação Já Processada</h2>
+                    
+                    <p class="lead text-muted mb-4">
+                        Esta reserva já foi processada anteriormente.
+                    </p>
+                    
+                    {% if action == 'CONFIRMED' %}
+                        <div class="alert alert-success">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Esta reserva foi <strong>confirmada</strong> e o equipamento foi marcado como utilizado.
+                        </div>
+                    {% else %}
+                        <div class="alert alert-danger">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Esta reserva foi <strong>cancelada</strong> e o estoque foi devolvido.
+                        </div>
+                    {% endif %}
+                    
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Não é possível processar a mesma reserva duas vezes.
+                    </div>
+                    
+                    <div class="d-grid gap-2 mt-4">
+                        <a href="{% url 'home' %}" class="btn btn-primary btn-lg">
+                            <i class="bi bi-house-door me-2"></i>
+                            Voltar para o Sistema
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

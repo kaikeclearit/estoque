@@ -1,0 +1,231 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-light mb-0">Gestão de Produtos</h2>
+        <p class="text-muted small mb-0">Gerencie seu catálogo e verifique níveis de estoque.</p>
+    </div>
+
+    <div>
+        {% if perms.core.add_product %}
+            <a href="{% url 'product_create' %}" class="btn btn-primary shadow-sm">
+                <i class="bi bi-plus-lg"></i> Novo Produto
+            </a>
+        {% else %}
+            <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" title="Apenas gestores podem cadastrar produtos">
+                <button class="btn btn-secondary shadow-sm" disabled style="cursor: not-allowed;">
+                    <i class="bi bi-lock-fill"></i> Novo Produto
+                </button>
+            </span>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm border-start border-4 border-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small text-uppercase fw-bold">Total Cadastrado</span>
+                        <h3 class="mb-0 fw-bold">{{ stats.total }}</h3>
+                    </div>
+                    <div class="bg-primary bg-opacity-10 p-3 rounded text-primary">
+                        <i class="bi bi-box-seam fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm border-start border-4 border-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small text-uppercase fw-bold">Em Estoque</span>
+                        <h3 class="mb-0 fw-bold">{{ stats.active }}</h3>
+                    </div>
+                    <div class="bg-success bg-opacity-10 p-3 rounded text-success">
+                        <i class="bi bi-check-circle fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm border-start border-4 border-danger">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small text-uppercase fw-bold">Críticos / Zerados</span>
+                        <h3 class="mb-0 fw-bold">{{ stats.alert }}</h3>
+                    </div>
+                    <div class="bg-danger bg-opacity-10 p-3 rounded text-danger">
+                        <i class="bi bi-exclamation-triangle fs-4"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2">
+            <div class="col-md-10">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" name="search" class="form-control border-start-0 ps-0" 
+                           placeholder="Buscar por nome, modelo ou fabricante..." 
+                           value="{{ search_query }}">
+                    <input type="hidden" name="location" value="{{ location_filter }}">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-funnel"></i> Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-0">
+        <ul class="nav nav-tabs border-0" role="tablist">
+            <li class="nav-item" role="presentation">
+                <a class="nav-link {% if location_filter == 'TODOS' %}active{% endif %}" 
+                   href="?location=TODOS{% if search_query %}&search={{ search_query }}{% endif %}"
+                   role="tab">
+                    <i class="bi bi-list-ul me-1"></i>
+                    <strong>TODOS</strong>
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link {% if location_filter == 'MAO' %}active{% endif %}" 
+                   href="?location=MAO{% if search_query %}&search={{ search_query }}{% endif %}"
+                   role="tab">
+                    <i class="bi bi-geo-alt-fill me-1"></i>
+                    <strong>MANAUS</strong>
+                </a>
+            </li>
+            <li class="nav-item" role="presentation">
+                <a class="nav-link {% if location_filter == 'SP' %}active{% endif %}" 
+                   href="?location=SP{% if search_query %}&search={{ search_query }}{% endif %}"
+                   role="tab">
+                    <i class="bi bi-geo-alt-fill me-1"></i>
+                    <strong>SÃO PAULO</strong>
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4">Nome</th>
+                    <th>Fabricante</th> 
+                    <th>Modelo</th>
+                    <th class="text-center">Localização</th>
+                    <th class="text-end pe-4">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr>
+                    <td class="ps-4 fw-bold">{{ product.name }}</td>
+                    <td class="text-muted">{{ product.model|default:"-" }}</td>
+                    <td class="text-muted">{{ product.manufacturer|default:"-" }}</td>
+                    
+                    <td class="text-center">
+                        {% if product.stocks.exists %}
+                            {% if location_filter == 'MAO' %}
+                                {% for stock in product.stocks.all %}
+                                    {% if stock.location == 'MAO' and stock.quantity > 0 %}
+                                        <span class="badge bg-light text-white border">MAO: <strong>{{ stock.quantity }}</strong></span>
+                                    {% endif %}
+                                {% endfor %}
+                            {% elif location_filter == 'SP' %}
+                                {% for stock in product.stocks.all %}
+                                    {% if stock.location == 'SP' and stock.quantity > 0 %}
+                                        <span class="badge bg-light text-light border">SP: <strong>{{ stock.quantity }}</strong></span>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                {% for stock in product.stocks.all %}
+                                    {% if stock.quantity > 0 %}
+                                        <span class="badge bg-light text-dark border">{{ stock.location }}: <strong>{{ stock.quantity }}</strong></span>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        {% else %}
+                            <span class="badge bg-danger bg-opacity-10 text-danger">Sem Estoque</span>
+                        {% endif %}
+                    </td>
+
+                    <td class="text-end pe-4">
+                        <button class="btn btn-sm btn-outline-info me-1"
+                                hx-get="{% url 'product_entries_modal' product.id %}"
+                                hx-target="#dialog-content"
+                                data-bs-toggle="modal" 
+                                data-bs-target="#modalHistorico">
+                            <i class="bi bi-eye"></i>
+                        </button>
+
+                        {% if perms.core.change_product %}
+                            <a href="{% url 'product_update' product.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                        {% else %}
+                            <button class="btn btn-sm btn-outline-secondary" disabled style="cursor: not-allowed;" title="Restrito a gestores">
+                                <i class="bi bi-lock-fill"></i>
+                            </button>
+                        {% endif %}
+                        
+                        {% if perms.core.add_stockout %}
+                            <a href="{% url 'output_create' %}?product_id={{ product.id }}" class="btn btn-sm btn-outline-danger ms-1">
+                                <i class="bi bi-box-arrow-up"></i>
+                            </a>
+                        {% else %}
+                            <button class="btn btn-sm btn-outline-secondary ms-1" disabled style="cursor: not-allowed;" title="Restrito a gestores">
+                                <i class="bi bi-lock-fill"></i>
+                            </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-5 text-muted">
+                        <i class="bi bi-box-seam display-4 d-block mb-3 opacity-50"></i>
+                        Nenhum produto encontrado
+                        {% if location_filter != 'TODOS' %}
+                            em <strong>{{ location_filter }}</strong>
+                        {% endif %}
+                        {% if search_query %}
+                            com a busca "<strong>{{ search_query }}</strong>"
+                        {% endif %}.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="modalHistorico" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" id="dialog-content">
+             <div class="modal-body text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

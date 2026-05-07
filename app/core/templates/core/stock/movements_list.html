@@ -1,0 +1,247 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+        <h2 class="fw-light">Histórico de Movimentações</h2>
+        <p class="text-muted">Acompanhe todas as entradas e saídas do estoque.</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <div class="btn-group">
+            
+            {% if perms.core.add_stockentry %}
+                <a href="{% url 'entry_create' %}" class="btn btn-success">
+                    <i class="bi bi-box-arrow-in-down"></i> Nova Entrada
+                </a>
+            {% else %}
+                <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" title="Apenas gestores podem realizar entradas">
+                    <button class="btn btn-secondary" disabled style="cursor: not-allowed;">
+                        <i class="bi bi-lock-fill"></i> Nova Entrada
+                    </button>
+                </span>
+            {% endif %}
+
+            {% if perms.core.add_stockout %}
+                <a href="{% url 'output_create' %}" class="btn btn-danger">
+                    <i class="bi bi-box-arrow-up"></i> Nova Saída
+                </a>
+            {% else %}
+                <span class="d-inline-block" tabindex="0" data-bs-toggle="tooltip" title="Apenas gestores podem realizar saídas">
+                    <button class="btn btn-secondary" disabled style="cursor: not-allowed;">
+                        <i class="bi bi-lock-fill"></i> Nova Saída
+                    </button>
+                </span>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white border-bottom-0 pb-0">
+        <ul class="nav nav-tabs" id="historyTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active text-danger fw-bold" id="saidas-tab" data-bs-toggle="tab" data-bs-target="#saidas" type="button" role="tab">
+                    <i class="bi bi-arrow-up-circle"></i> Saídas
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link text-success fw-bold" id="entradas-tab" data-bs-toggle="tab" data-bs-target="#entradas" type="button" role="tab">
+                    <i class="bi bi-arrow-down-circle"></i> Entradas
+                </button>
+            </li>
+        </ul>
+    </div>
+
+    <div class="card-body p-0">
+        <div class="tab-content" id="historyTabContent">
+            
+            <!-- ============================================ -->
+            <!-- ABA DE SAÍDAS - COM BOTÃO DE REVERTER       -->
+            <!-- ============================================ -->
+            <div class="tab-pane fade show active" id="saidas" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Data</th>
+                                <th>Produto</th>
+                                <th>Destino/Cliente</th>
+                                <th>Tipo de Saída</th>
+                                <th class="text-center">Qtd.</th>
+                                <th>Responsável</th>
+                                <th class="text-end pe-4">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for out in outputs %}
+                            <tr {% if out.is_cancelled %}class="table-secondary"{% endif %}>
+                                <td class="small">{{ out.created_at|date:"d/m/y H:i" }}</td>
+                                <td class="fw-bold">
+                                    {{ out.product.name }}
+                                    {% if out.is_cancelled %}
+                                        <span class="badge bg-danger ms-2">CANCELADA</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ out.client.name|default:"-" }}</td>
+                                <td>
+                                    <span class="badge {% if out.movement_type == 'RESERVA' %}bg-warning text-dark{% elif out.movement_type == 'SAIDA' %}bg-danger{% elif out.movement_type == 'EMPRESTIMO' %}bg-info{% else %}bg-secondary{% endif %}">
+                                        {{ out.get_movement_type_display|default:"-" }}
+                                    </span>
+                                </td>
+                                <td class="text-center text-danger fw-bold">-{{ out.quantity }}</td>
+                                <td class="small">{{ out.employee.first_name }}</td>
+                                <td class="text-end pe-4">
+                                    {% if not out.is_cancelled %}
+                                        {% if perms.core.change_stockout %}
+                                            <button class="btn btn-sm btn-outline-warning" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#confirmReverseModal{{ out.id }}"
+                                                    title="Reverter saída">
+                                                <i class="bi bi-arrow-counterclockwise"></i>
+                                            </button>
+                                        {% endif %}
+                                    {% else %}
+                                        <small class="text-muted">
+                                            <i class="bi bi-info-circle"></i>
+                                            Cancelada em {{ out.cancelled_at|date:"d/m/y H:i" }}
+                                            {% if out.cancelled_by %}
+                                                por {{ out.cancelled_by.first_name }}
+                                            {% endif %}
+                                        </small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="7" class="text-center py-4 text-muted">Nenhuma saída registrada.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ============================================ -->
+            <!-- ABA DE ENTRADAS (SEM ALTERAÇÕES)           -->
+            <!-- ============================================ -->
+            <div class="tab-pane fade" id="entradas" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Data</th>
+                                <th>Produto</th>
+                                <th>Tipo</th>
+                                <th class="text-center">Qtd.</th>
+                                <th class="text-center">Local</th>
+                                <th class="text-center">Nota Fiscal</th>
+                                <th>Responsável</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in entries %}
+                            <tr>
+                                <td class="small">{{ entry.created_at|date:"d/m/y H:i" }}</td>
+                                <td class="fw-bold">{{ entry.product.name }}</td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ entry.get_entry_type_display }}</span>
+                                </td>
+                                <td class="text-center text-success fw-bold">+{{ entry.quantity }}</td>
+                                <td class="text-center fw-bold">{{ entry.location }}</td>
+                                <td class="text-center fw-bold">{{ entry.nf_number|default:"-"}}</td>
+                                <td class="small">{{ entry.employee.first_name }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="7" class="text-center py-4 text-muted">Nenhuma entrada registrada.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- MODAIS DE CONFIRMAÇÃO DE REVERSÃO           -->
+<!-- ============================================ -->
+{% for out in outputs %}
+{% if not out.is_cancelled %}
+<div class="modal fade" id="confirmReverseModal{{ out.id }}" tabindex="-1" aria-labelledby="confirmReverseModalLabel{{ out.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="confirmReverseModalLabel{{ out.id }}">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Confirmar Reversão
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <strong>Atenção!</strong> Esta ação irá devolver o estoque e não pode ser desfeita.
+                </div>
+                
+                <h6 class="mb-3">Detalhes da Saída:</h6>
+                <table class="table table-sm table-bordered">
+                    <tr>
+                        <th width="40%">Produto:</th>
+                        <td><strong>{{ out.product.name }}</strong></td>
+                    </tr>
+                    <tr>
+                        <th>Cliente:</th>
+                        <td>{{ out.client.name }}</td>
+                    </tr>
+                    <tr>
+                        <th>Quantidade:</th>
+                        <td><strong class="text-danger">{{ out.quantity }} unidade(s)</strong></td>
+                    </tr>
+                    <tr>
+                        <th>Local:</th>
+                        <td>{{ out.get_location_display }}</td>
+                    </tr>
+                </table>
+                
+                <p class="mb-0">
+                    <i class="bi bi-arrow-counterclockwise me-2"></i>
+                    <strong>{{ out.quantity }} unidade(s)</strong> será(ão) devolvida(s) ao estoque de <strong>{{ out.get_location_display }}</strong>.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-1"></i>
+                    Cancelar
+                </button>
+                <a href="{% url 'reverse_stockout' out.id %}" class="btn btn-warning">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>
+                    Reverter Saída
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
+
+<style>
+/* Estilo para linhas canceladas */
+.table-secondary {
+    background-color: #f8f9fa !important;
+    opacity: 0.7;
+}
+
+.table-secondary td {
+    text-decoration: line-through;
+}
+
+.table-secondary .badge {
+    text-decoration: none;
+}
+
+/* Animação suave para o modal */
+.modal.fade .modal-dialog {
+    transition: transform 0.3s ease-out;
+}
+</style>
+
+{% endblock %}

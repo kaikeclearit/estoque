@@ -1,0 +1,837 @@
+/* ============================================
+   TEMA CLEARIT - SISTEMA DE ESTOQUE
+   Versão Completa e Definitiva
+   Baseado no Manual de Marca ClearIT
+   ============================================ */
+
+/* ============================================
+   VARIÁVEIS CSS
+   ============================================ */
+
+:root {
+    /* Cores Primárias ClearIT */
+    --clearit-azul-escuro: #164194;
+    --clearit-azul-claro: #0080C9;
+    --clearit-cinza: #9d9d9c;
+    
+    /* Cores Secundárias */
+    --clearit-laranja: #ef7d00;
+    --clearit-verde: #00ab97;
+    --clearit-amarelo: #ffcc00;
+    
+    /* Gradiente Oficial */
+    --clearit-gradient: linear-gradient(135deg, #164194 0%, #0080C9 100%);
+    
+    /* Tema Claro (Padrão) */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-tertiary: #e9ecef;
+    --text-primary: #164194;
+    --text-secondary: #6c757d;
+    --border-color: #dee2e6;
+    --shadow: 0 2px 8px rgba(22, 65, 148, 0.1);
+    --shadow-hover: 0 8px 16px rgba(22, 65, 148, 0.15);
+}
+
+[data-theme="dark"] {
+    --bg-primary: #1a1a2e;
+    --bg-secondary: #16213e;
+    --bg-tertiary: #1e2530;
+    --text-primary: #e0e0e0;      
+    --text-secondary: #b0b8c4;    
+    --border-color: #2a3f5f;
+    --shadow: 0 2px 8px rgba(0, 128, 201, 0.2);
+    --shadow-hover: 0 8px 16px rgba(0, 128, 201, 0.25);
+}
+
+/* ============================================
+   RESET E GLOBAL
+   ============================================ */
+
+* {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+body {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    font-family: 'Titillium Web', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+}
+
+body.bg-light {
+    background-color: var(--bg-primary) !important;
+}
+
+/* ============================================
+   NAVBAR
+   ============================================ */
+
+.navbar {
+    background: var(--clearit-gradient) !important;
+    box-shadow: var(--shadow);
+}
+
+.navbar-brand {
+    font-weight: 700 !important;
+    letter-spacing: 1px;
+    color: white !important;
+}
+
+.nav-link {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-weight: 500 !important;
+    transition: all 0.3s ease;
+}
+
+.nav-link:hover {
+    color: white !important;
+    transform: translateY(-2px);
+}
+
+.nav-link.active {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 4px;
+}
+
+/* ============================================
+   BOTÃO TOGGLE TEMA
+   ============================================ */
+
+.theme-toggle {
+    position: relative;
+    width: 60px;
+    height: 30px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 30px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.theme-toggle-slider {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 22px;
+    height: 22px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
+.theme-toggle-slider::before {
+    content: '☀️';
+}
+
+[data-theme="dark"] .theme-toggle-slider {
+    transform: translateX(30px);
+}
+
+[data-theme="dark"] .theme-toggle-slider::before {
+    content: '🌙';
+}
+
+/* ============================================
+   TÍTULOS E TEXTOS
+   ============================================ */
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary) !important;
+}
+
+.text-muted,
+.text-secondary,
+small.text-muted {
+    color: var(--text-secondary) !important;
+}
+
+/* ============================================
+   CARDS
+   ============================================ */
+
+.card {
+    background-color: var(--bg-primary) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+    box-shadow: var(--shadow);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-hover);
+}
+
+.card-body,
+.card-text,
+.card-title {
+    color: inherit !important;
+    background-color: transparent !important;
+}
+
+.card-header {
+    background: var(--clearit-gradient) !important;
+    color: white !important;
+    border: none !important;
+    font-weight: 600;
+}
+
+.card-header:not(.bg-clearit-gradient):not([style*="background"]) {
+    background-color: var(--bg-secondary) !important;
+    color: var(--text-primary) !important;
+    border-bottom-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .card {
+    background-color: #252d3a !important;
+    border-color: #3a4556 !important;
+    color: #e0e0e0 !important;
+}
+
+[data-theme="dark"] .card:hover {
+    background-color: #2a3342 !important;
+}
+
+[data-theme="dark"] .card-header:not(.bg-clearit-gradient):not([style*="background"]) {
+    background-color: #1e2530 !important;
+    color: #0080C9 !important;
+    border-bottom-color: #3a4556 !important;
+}
+
+/* ============================================
+   TABELAS
+   ============================================ */
+
+.table-responsive,
+.table-responsive * {
+    background-color: transparent !important;
+}
+
+.table {
+    background-color: transparent !important;
+    color: var(--text-primary) !important;
+}
+
+.table thead th {
+    background: var(--clearit-gradient) !important;
+    color: white !important;
+    border: none !important;
+}
+
+.table tbody {
+    background-color: transparent !important;
+}
+
+.table tbody tr {
+    background-color: var(--bg-primary) !important;
+}
+
+.table tbody td {
+    background-color: transparent !important;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 128, 201, 0.08) !important;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+.table-secondary {
+    opacity: 0.7 !important;
+}
+
+/* Tema Escuro - Tabelas */
+[data-theme="dark"] .table {
+    color: #e0e0e0 !important;
+}
+
+[data-theme="dark"] .table tbody tr {
+    background-color: transparent !important;
+}
+
+[data-theme="dark"] .table-hover tbody tr:hover {
+    background-color: rgba(0, 128, 201, 0.15) !important;
+}
+
+[data-theme="dark"] .table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 128, 201, 0.05) !important;
+}
+
+[data-theme="dark"] .table-secondary {
+    background-color: rgba(42, 51, 66, 0.3) !important;
+}
+
+[data-theme="dark"] .table-secondary td {
+    color: #9d9d9c !important;
+}
+
+/* ============================================
+   BADGES
+   ============================================ */
+
+.badge {
+    font-weight: 600 !important;
+    padding: 0.5em 0.8em;
+}
+
+.badge.bg-warning {
+    background-color: var(--clearit-amarelo) !important;
+    color: var(--clearit-azul-escuro) !important;
+}
+
+.badge.bg-success {
+    background-color: var(--clearit-verde) !important;
+    color: white !important;
+}
+
+.badge.bg-danger {
+    background-color: #dc3545 !important;
+    color: white !important;
+}
+
+.badge.bg-secondary {
+    background-color: #6c757d !important;
+    color: white !important;
+}
+
+[data-theme="dark"] .badge.bg-warning {
+    background-color: #ffc107 !important;
+    color: #1a1a2e !important;
+}
+
+/* ============================================
+   BOTÕES
+   ============================================ */
+
+.btn-primary {
+    background: var(--clearit-gradient) !important;
+    border: none !important;
+    color: white !important;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(22, 65, 148, 0.3);
+}
+
+.btn-success {
+    background-color: var(--clearit-verde) !important;
+    border-color: var(--clearit-verde) !important;
+    color: white !important;
+}
+
+.btn-danger {
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+    color: white !important;
+}
+
+.btn-warning {
+    background-color: var(--clearit-amarelo) !important;
+    border-color: var(--clearit-amarelo) !important;
+    color: var(--clearit-azul-escuro) !important;
+}
+
+.btn-outline-light {
+    color: white !important;
+    border-color: white !important;
+}
+
+.btn-outline-light:hover {
+    background-color: white !important;
+    color: var(--clearit-azul-escuro) !important;
+}
+
+.btn-outline-secondary {
+    color: var(--text-secondary) !important;
+    border-color: var(--text-secondary) !important;
+}
+
+/* ============================================
+   FORMULÁRIOS - INPUTS E SELECTS
+   ============================================ */
+
+label,
+.form-label {
+    color: var(--text-primary) !important;
+    font-weight: 500 !important;
+}
+
+.form-control,
+.form-select,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+textarea,
+select {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--clearit-azul-claro) !important;
+    box-shadow: 0 0 0 0.2rem rgba(0, 128, 201, 0.25) !important;
+}
+
+.form-control:disabled,
+.form-select:disabled {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-secondary) !important;
+}
+
+.form-text {
+    color: var(--text-secondary) !important;
+}
+
+/* Tema Escuro - Forms */
+[data-theme="dark"] label,
+[data-theme="dark"] .form-label {
+    color: #e0e0e0 !important;
+}
+
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-select,
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="email"],
+[data-theme="dark"] input[type="password"],
+[data-theme="dark"] input[type="number"],
+[data-theme="dark"] input[type="date"],
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+    background-color: #1e2530 !important;
+    color: #e0e0e0 !important;
+    border-color: #3a4556 !important;
+}
+
+[data-theme="dark"] .form-control:focus,
+[data-theme="dark"] .form-select:focus {
+    background-color: #1e2530 !important;
+    color: #e0e0e0 !important;
+}
+
+[data-theme="dark"] .form-control:disabled,
+[data-theme="dark"] .form-select:disabled {
+    background-color: #16213e !important;
+}
+
+/* ============================================
+   SELECT2
+   ============================================ */
+
+/* Tema Claro */
+.select2-container--bootstrap-5 .select2-selection {
+    background-color: #ffffff !important;
+    border-color: #dee2e6 !important;
+    color: #164194 !important;
+}
+
+.select2-container--bootstrap-5 .select2-selection--single {
+    background-color: #ffffff !important;
+    color: #164194 !important;
+}
+
+.select2-container--bootstrap-5 .select2-dropdown {
+    background-color: #ffffff !important;
+    border-color: #dee2e6 !important;
+}
+
+.select2-container--bootstrap-5 .select2-results__option {
+    color: #164194 !important;
+    background-color: #ffffff !important;
+}
+
+.select2-container--bootstrap-5 .select2-results__option--highlighted {
+    background-color: #0080C9 !important;
+    color: white !important;
+}
+
+.select2-container--bootstrap-5 .select2-results__option--selected {
+    background-color: #e9ecef !important;
+    color: #164194 !important;
+}
+
+.select2-container--bootstrap-5 .select2-selection__rendered {
+    color: #164194 !important;
+}
+
+.select2-container--bootstrap-5 .select2-selection__placeholder {
+    color: #6c757d !important;
+}
+
+/* Tema Escuro - Select2 */
+[data-theme="dark"] .select2-container--bootstrap-5 .select2-selection {
+    background-color: #1e2530 !important;
+    border-color: #3a4556 !important;
+    color: #e0e0e0 !important;
+}
+
+[data-theme="dark"] .select2-container--bootstrap-5 .select2-selection--single {
+    background-color: #1e2530 !important;
+    color: #e0e0e0 !important;
+}
+
+[data-theme="dark"] .select2-container--bootstrap-5 .select2-dropdown {
+    background-color: #252d3a !important;
+    border-color: #3a4556 !important;
+}
+
+[data-theme="dark"] .select2-container--bootstrap-5 .select2-results__option {
+    color: #e0e0e0 !important;
+    background-color: #252d3a !important;
+}
+
+[data-theme="dark"] .select2-container--bootstrap-5 .select2-results__option--highlighted {
+    background-color: #0080C9 !important;
+    color: white !important;
+}
+
+[data-theme="dark"] .select2-container--bootstrap-5 .select2-results__option--selected {
+    background-color: #1e2530 !important;
+    color: #0080C9 !important;
+}
+
+[data-theme="dark"] .select2-container--bootstrap-5 .select2-selection__rendered {
+    color: #e0e0e0 !important;
+}
+
+[data-theme="dark"] .select2-container--bootstrap-5 .select2-selection__arrow b {
+    border-color: #e0e0e0 transparent transparent transparent !important;
+}
+
+[data-theme="dark"] .select2-container--bootstrap-5 .select2-search__field {
+    background-color: #1e2530 !important;
+    color: #e0e0e0 !important;
+    border-color: #3a4556 !important;
+}
+
+/* ============================================
+   CHECKBOX E RADIO
+   ============================================ */
+
+.form-check-input {
+    background-color: var(--bg-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.form-check-input:checked {
+    background-color: #0080C9 !important;
+    border-color: #0080C9 !important;
+}
+
+.form-check-label {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .form-check-input {
+    background-color: #1e2530 !important;
+    border-color: #3a4556 !important;
+}
+
+[data-theme="dark"] .form-check-label {
+    color: #e0e0e0 !important;
+}
+
+/* ============================================
+   ALERTAS
+   ============================================ */
+
+.alert {
+    border-radius: 8px !important;
+    border: none !important;
+}
+
+.alert-success {
+    background-color: rgba(0, 171, 151, 0.15) !important;
+    color: var(--clearit-verde) !important;
+    border-left: 4px solid var(--clearit-verde) !important;
+}
+
+.alert-warning {
+    background-color: rgba(255, 204, 0, 0.15) !important;
+    color: #cc9900 !important;
+    border-left: 4px solid var(--clearit-amarelo) !important;
+}
+
+.alert-danger {
+    background-color: rgba(220, 53, 69, 0.15) !important;
+    color: #dc3545 !important;
+    border-left: 4px solid #dc3545 !important;
+}
+
+.alert-info {
+    background-color: rgba(0, 128, 201, 0.15) !important;
+    color: var(--clearit-azul-claro) !important;
+    border-left: 4px solid var(--clearit-azul-claro) !important;
+}
+
+/* Tema Escuro - Alertas */
+[data-theme="dark"] .alert-success {
+    background-color: rgba(0, 171, 151, 0.25) !important;
+    color: #00e6ca !important;
+}
+
+[data-theme="dark"] .alert-warning {
+    background-color: rgba(255, 204, 0, 0.25) !important;
+    color: #ffd700 !important;
+}
+
+[data-theme="dark"] .alert-danger {
+    background-color: rgba(220, 53, 69, 0.25) !important;
+    color: #ff6b7a !important;
+}
+
+[data-theme="dark"] .alert-info {
+    background-color: rgba(0, 128, 201, 0.25) !important;
+    color: #00a8e6 !important;
+}
+
+/* ============================================
+   MODAIS
+   ============================================ */
+
+.modal-content {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+.modal-header {
+    background: var(--clearit-gradient) !important;
+    color: white !important;
+    border-bottom: none !important;
+}
+
+.modal-body {
+    color: inherit !important;
+}
+
+.modal-footer {
+    border-top-color: var(--border-color) !important;
+}
+
+.modal-header .btn-close {
+    filter: brightness(0) invert(1);
+}
+
+[data-theme="dark"] .modal-content {
+    background-color: #252d3a !important;
+    color: #e0e0e0 !important;
+    border-color: #3a4556 !important;
+}
+
+[data-theme="dark"] .modal-footer {
+    border-top-color: #3a4556 !important;
+}
+
+/* ============================================
+   BORDAS E DIVISORES
+   ============================================ */
+
+.border,
+.border-top,
+.border-bottom,
+.border-start,
+.border-end {
+    border-color: var(--border-color) !important;
+}
+
+hr {
+    border-color: var(--border-color) !important;
+    opacity: 0.5 !important;
+}
+
+/* ============================================
+   LINKS
+   ============================================ */
+
+a:not(.btn):not(.nav-link) {
+    color: var(--clearit-azul-claro) !important;
+}
+
+a:not(.btn):not(.nav-link):hover {
+    color: var(--clearit-azul-escuro) !important;
+}
+
+[data-theme="dark"] a:not(.btn):not(.nav-link):hover {
+    color: #00a8e6 !important;
+}
+
+/* ============================================
+   FOOTER
+   ============================================ */
+
+.footer {
+    background-color: var(--bg-primary) !important;
+    border-top-color: var(--border-color) !important;
+    color: var(--text-secondary) !important;
+}
+
+.footer.bg-clearit-gradient {
+    background: var(--clearit-gradient) !important;
+    color: white !important;
+}
+
+[data-theme="dark"] .footer:not(.bg-clearit-gradient) {
+    background-color: #16213e !important;
+    border-top-color: #2a3f5f !important;
+}
+
+/* ============================================
+   CONTAINERS
+   ============================================ */
+
+.container,
+.container-fluid {
+    background-color: transparent !important;
+}
+
+/* ============================================
+   ANIMAÇÕES
+   ============================================ */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease;
+}
+
+/* ============================================
+   UTILITÁRIOS CLEARIT
+   ============================================ */
+
+.text-clearit-primary {
+    color: var(--clearit-azul-escuro) !important;
+}
+
+.text-clearit-secondary {
+    color: var(--clearit-azul-claro) !important;
+}
+
+.bg-clearit-gradient {
+    background: var(--clearit-gradient) !important;
+    color: white !important;
+}
+
+.shadow-clearit {
+    box-shadow: var(--shadow-hover) !important;
+}
+
+/* ============================================
+   ÍCONES
+   ============================================ */
+
+[data-theme="dark"] .bi {
+    color: inherit !important;
+}
+
+/* Forçar cor do texto nas células */
+.table td,
+.table th {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .table td,
+[data-theme="dark"] .table th {
+    color: #e0e0e0 !important;
+}
+
+/* Exceção: thead mantém branco */
+.table thead th {
+    color: white !important;
+}
+
+/* Linhas canceladas mantém cinza */
+[data-theme="dark"] .table-secondary td,
+[data-theme="dark"] .table-secondary th {
+    color: #9d9d9c !important;
+}
+
+.table tbody tr td {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .table tbody tr td {
+    color: #e0e0e0 !important;
+}
+
+/* ============================================
+   2. ABAS DE FILTRO - VISÍVEIS NOS 2 TEMAS
+   ============================================ */
+
+.nav-tabs .nav-link {
+    color: var(--text-primary) !important;
+    background-color: var(--bg-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+    font-weight: 600 !important;
+}
+
+.nav-tabs .nav-link.active {
+    color: white !important;
+    background-color: var(--clearit-azul-claro) !important;
+    border-bottom-color: transparent !important;
+}
+
+[data-theme="dark"] .nav-tabs .nav-link {
+    color: #9d9d9c !important;
+    background-color: #252d3a !important;
+}
+
+[data-theme="dark"] .nav-tabs .nav-link.active {
+    color: white !important;
+    background-color: var(--clearit-azul-claro) !important;
+}
+
+/* ============================================
+   3. MODAL - LABELS VISÍVEIS
+   ============================================ */
+
+.modal-body label {
+    color: var(--text-secondary) !important;
+    font-weight: 500 !important;
+}
+
+[data-theme="dark"] .modal-body label {
+    color: #9d9d9c !important;
+}
+
+.modal-body td {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .modal-body td {
+    color: #e0e0e0 !important;
+}
+
+[data-theme="dark"] .badge.bg-light {
+    background-color: #2a3f5f !important;
+    color: #e0e0e0 !important;
+    border-color: #3a4556 !important;
+}
+

@@ -1,0 +1,85 @@
+erDiagram
+    Employee ||--o{ StockEntry : registra
+    Employee ||--o{ StockOut : registra
+    Employee ||--o{ StockOut : cancela
+    
+    Product ||--o{ ProductStock : "tem estoque em"
+    Product ||--o{ StockEntry : "entrada de"
+    Product ||--o{ StockOut : "saída de"
+    
+    Client ||--o{ StockOut : "destino de"
+    
+    ProductStock }o--|| Product : pertence
+    
+    StockOut ||--o| ReservationToken : "gera token"
+    
+    Employee {
+        int id PK
+        string username UK
+        string email
+        string password_hash
+        string microsoft_oid UK "nullable"
+        string login_type "LOCAL|MS|HYBRID"
+        string department "nullable"
+        datetime date_joined
+        boolean is_active
+        boolean is_staff
+    }
+    
+    Product {
+        int id PK
+        string name
+        string model
+        string manufacturer
+        string product_id UK "nullable"
+    }
+    
+    ProductStock {
+        int id PK
+        int product_id FK
+        string location "MAO|SP"
+        int quantity "CHECK >= 0"
+    }
+    
+    StockEntry {
+        int id PK
+        int product_id FK
+        int employee_id FK
+        string entry_type "COMPRA|RETORNO|AJUSTE|DOACAO"
+        string nf_number
+        string location "MAO|SP"
+        int quantity
+        datetime created_at
+    }
+    
+    StockOut {
+        int id PK
+        int product_id FK
+        int client_id FK
+        int employee_id FK
+        int cancelled_by_id FK "nullable"
+        string location "MAO|SP"
+        string movement_type "SAIDA|RESERVA|EMPRESTIMO|DESCARTE"
+        int quantity
+        date scheduled_date "nullable"
+        text observation "nullable"
+        boolean is_cancelled
+        datetime cancelled_at "nullable"
+        datetime created_at
+    }
+    
+    Client {
+        int id PK
+        string name UK
+    }
+    
+    ReservationToken {
+        int id PK
+        int stock_out_id FK
+        uuid token UK
+        datetime created_at
+        datetime expires_at
+        boolean confirmed
+        datetime confirmed_at "nullable"
+        string action "nullable, CONFIRMED or CANCELLED"
+    }

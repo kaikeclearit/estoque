@@ -1,0 +1,67 @@
+<div class="modal-header bg-light">
+    <h5 class="modal-title">
+        <i class="bi bi-building"></i> Histórico: <strong>{{ client.name }}</strong>
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<div class="modal-body p-0">
+    <div class="table-responsive">
+        <table class="table table-striped table-hover mb-0 align-middle">
+            <thead class="small text-muted">
+                <tr>
+                    <th>Data</th>
+                    <th>Produto</th>
+                    <th class="text-center">Qtd.</th>
+                    <th>Quem Entregou</th> <th>Obs/Detalhes</th> </tr>
+            </thead>
+            <tbody>
+                {% for out in history %}
+                <tr>
+                    <td class="small text-nowrap">{{ out.created_at|date:"d/m/y H:i" }}</td>
+                    
+                    <td class="fw-bold text-dark">
+                        {{ out.product.name }}
+                        <div class="small text-muted fw-normal">{{ out.product.model|default:"" }}</div>
+                    </td>
+
+                    <td class="text-center">
+                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">
+                            -{{ out.quantity }}
+                        </span>
+                    </td>
+
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-person-circle text-secondary me-2"></i>
+                            <span class="small">{{ out.employee.first_name|default:out.employee.username }}</span>
+                        </div>
+                    </td>
+
+                    <td>
+                        {% if out.observation %}
+                            <small class="text-muted fst-italic">"{{ out.observation|truncatechars:30 }}"</small>
+                            {% if out.observation|length > 30 %}
+                            <i class="bi bi-info-circle" title="{{ out.observation }}" style="cursor: help;"></i>
+                            {% endif %}
+                        {% else %}
+                            <span class="text-muted small">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-5 text-muted">
+                        <i class="bi bi-box-seam display-6 d-block mb-3 opacity-50"></i>
+                        Nenhum equipamento/produto entregue para este cliente ainda.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+</div>

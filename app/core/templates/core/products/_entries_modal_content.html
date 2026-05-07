@@ -1,0 +1,111 @@
+<div class="modal-header">
+    <h5 class="modal-title"><i class="bi bi-clock-history"></i> Histórico de Entradas</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+
+<div class="modal-body p-0">
+    <div class="table-responsive">
+        <table class="table table-striped table-hover mb-0 align-middle">
+            <thead class="table-light small">
+                <tr>
+                    <th>Data</th>
+                    <th>Tipo</th>
+                    <th>NF</th> <th>Qtd.</th>
+                    <th>Local</th>
+                    <th>Responsável</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in entries %}
+                <tr>
+                    <td class="small">{{ entry.created_at|date:"d/m/y H:i" }}</td>
+                    
+                    <td>
+                        {% if entry.entry_type == 'COMPRA' %}
+                            <span class="badge bg-primary">Compra</span>
+                        {% elif entry.entry_type == 'RETORNO' %}
+                            <span class="badge bg-info text-dark">Retorno</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ entry.get_entry_type_display }}</span>
+                        {% endif %}
+                    </td>
+
+                    <td class="small fw-bold text-muted">
+                        {% if entry.entry_type == 'COMPRA' %}
+                            {{ entry.nf_number|default:"-" }}
+                        {% else %}
+                            <span class="text-muted opacity-25">N/A</span>
+                        {% endif %}
+                    </td>
+
+                    <td class="fw-bold text-success">+{{ entry.quantity }}</td>
+                    
+                    <td><small>{{ entry.location }}</small></td>
+                    
+                    <td class="small text-truncate" style="max-width: 100px;">
+                        {{ entry.employee.first_name }}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox display-6 d-block mb-2"></i>
+                        Nenhuma entrada registrada para este item.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal-footer justify-content-between">
+    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+
+    <a href="{% url 'entry_create' %}?product_id={{ product.id }}" class="btn btn-success btn-sm">
+        <i class="bi bi-plus-lg"></i> Realizar Nova Entrada
+    </a>
+</div>
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // --- 1. ATIVAR A BUSCA INTELIGENTE (Select2) ---
+        // Aplica no campo de Produto e Cliente
+        $('#id_product').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Digite para pesquisar o produto...',
+            allowClear: true
+        });
+
+        $('#id_client').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Digite para pesquisar o cliente...',
+            allowClear: true
+        });
+
+        // --- 2. LÓGICA DO "IF" (RESERVA -> DATA) ---
+        const typeSelect = document.getElementById('id_movement_type');
+        const dateField = document.getElementById('id_scheduled_date');
+        
+        // Só executa se os campos existirem na tela (na tela de Entrada eles não existem)
+        if (typeSelect && dateField) {
+            const dateContainer = dateField.closest('.mb-3'); // Pega a div pai
+
+            function toggleDate() {
+                if (typeSelect.value === 'RESERVA') {
+                    $(dateContainer).slideDown(); 
+                } else {
+                    $(dateContainer).slideUp();
+                    dateField.value = ''; 
+                }
+            }
+
+            toggleDate();
+
+            typeSelect.addEventListener('change', toggleDate);
+        }
+    });
+</script>
+
+{% endblock %}

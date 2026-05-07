@@ -1,0 +1,93 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow border-0">
+            <div class="card-header {% if btn_class == 'btn-danger' %}bg-danger{% else %}bg-success{% endif %} text-white">
+                <h4 class="mb-0">
+                    <i class="bi {{ icon|default:'bi-box-arrow-in-down' }}"></i> {{ title }}
+                </h4>
+            </div>
+            
+            <div class="card-body bg-light">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    {% for field in form %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}
+                            <div class="text-danger small fw-bold mt-1">{{ field.errors }}</div>
+                        {% endif %}
+                        
+                        {% if field.name == 'client' %}
+                           <div class="form-text">
+                               Cliente não existe? 
+                               <a href="{% url 'client_create' %}">Cadastre aqui</a>.
+                           </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn {{ btn_class|default:'btn-success' }} btn-lg">
+                            Confirmar
+                        </button>
+                        <a href="{% url 'product_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        // --- 1. ATIVAR A BUSCA INTELIGENTE (Select2) ---
+        // Aplica no campo de Produto e Cliente
+        $('#id_product').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Digite para pesquisar o produto...',
+            allowClear: true
+        });
+
+        $('#id_client').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Digite para pesquisar o cliente...',
+            allowClear: true
+        });
+
+        // --- 2. LÓGICA DO "IF" (RESERVA -> DATA) ---
+        const typeSelect = document.getElementById('id_movement_type');
+        const dateField = document.getElementById('id_scheduled_date');
+        
+        // Só executa se os campos existirem na tela (na tela de Entrada eles não existem)
+        if (typeSelect && dateField) {
+            const dateContainer = dateField.closest('.mb-3'); // Pega a div pai
+
+            function toggleDate() {
+                if (typeSelect.value === 'RESERVA') {
+                    // Se for Reserva, mostra com uma animação suave
+                    $(dateContainer).slideDown(); 
+                } else {
+                    // Se não, esconde e limpa o campo
+                    $(dateContainer).slideUp();
+                    dateField.value = ''; 
+                }
+            }
+
+            // Executa ao carregar a página
+            toggleDate();
+
+            // Executa sempre que o usuário mudar a opção
+            typeSelect.addEventListener('change', toggleDate);
+        }
+    });
+</script>
+
+{% endblock %}
+$('#id_product').select2({ theme: 'bootstrap-5' }); // Saída
+$('#id_product_entry').select2({ theme: 'bootstrap-5' }); // Entrada (Novo)

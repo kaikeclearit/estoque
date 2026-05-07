@@ -1,0 +1,154 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2><i class="bi bi-clock-history"></i> Histórico de Saídas</h2>
+    <a href="{% url 'output_create' %}" class="btn btn-danger">
+        <i class="bi bi-box-arrow-up"></i> Nova Saída
+    </a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Data</th>
+                    <th class="text-center">Tipo</th> <th>Produto</th>
+                    <th class="text-center">Origem</th>
+                    <th class="text-center">Qtd.</th>
+                    <th>Destino</th>
+                    <th>Resp.</th>
+                    <th>Obs.</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for out in outputs %}
+                <tr>
+                    <td class="text-muted small">{{ out.created_at|date:"d/m/Y H:i" }}</td>
+
+                    <td class="text-center">
+                        {% if out.movement_type == 'RESERVA' %}
+                            <span class="badge bg-warning text-dark border border-warning">
+                                <i class="bi bi-clock"></i> Reserva
+                            </span>
+                            {% if out.scheduled_date %}
+                                <div class="small text-muted mt-1" style="font-size: 0.75rem;">
+                                    Até {{ out.scheduled_date|date:"d/m" }}
+                                </div>
+                            {% endif %}
+                        
+                        {% elif out.movement_type == 'DESCARTE' %}
+                            <span class="badge bg-dark">
+                                <i class="bi bi-trash"></i> Descarte
+                            </span>
+                        
+                        {% elif out.movement_type == 'EMPRESTIMO' %}
+                            <span class="badge bg-info text-dark">
+                                <i class="bi bi-arrow-left-right"></i> Empréstimo
+                            </span>
+
+                        {% else %}
+                            <span class="badge bg-secondary bg-opacity-25 text-secondary border">
+                                <i class="bi bi-check-lg"></i> Baixa
+                            </span>
+                        {% endif %}
+                    </td>
+
+                    <td class="fw-bold">{{ out.product.name }}</td>
+
+                    <td class="text-center">
+                        {% if out.location == 'SP' %}
+                            <span class="badge bg-primary bg-opacity-10 text-primary">SP</span>
+                        {% else %}
+                            <span class="badge bg-success bg-opacity-10 text-success">MAO</span>
+                        {% endif %}
+                    </td>
+
+                    <td class="text-center fw-bold text-danger">-{{ out.quantity }}</td>
+
+                    <td>{{ out.client.name }}</td>
+
+                    <td class="small">
+                        {{ out.employee.first_name|default:out.employee.username }}
+                    </td>
+
+                    <td class="small text-muted text-truncate" style="max-width: 150px;">
+                        {{ out.observation|default:"-" }}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center py-5 text-muted">
+                        Nenhuma saída registrada.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const productSelect = document.getElementById('id_product');
+    const quantityInput = document.getElementById('id_quantity');
+    const locationSelect = document.getElementById('id_location');
+    
+    if (!productSelect || !quantityInput) return;
+    
+    // Criar div para mostrar quantidade disponível
+    const availabilityDiv = document.createElement('div');
+    availabilityDiv.id = 'product-availability';
+    availabilityDiv.className = 'alert alert-info mt-2';
+    availabilityDiv.style.display = 'none';
+    
+    quantityInput.parentElement.appendChild(availabilityDiv);
+    
+    // Função para buscar quantidade disponível
+    async function updateAvailability() {
+        const productId = productSelect.value;
+        const locationId = locationSelect ? locationSelect.value : '';
+        
+        if (!productId) {
+            availabilityDiv.style.display = 'none';
+            return;
+        }
+        
+        try {
+            const url = `/api/product-stock/?product=${productId}${locationId ? `&location=${locationId}` : ''}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.quantity !== undefined) {
+                availabilityDiv.innerHTML = `
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Quantidade disponível:</strong> ${data.quantity} unidade(s)
+                `;
+                availabilityDiv.className = 'alert alert-info mt-2';
+                availabilityDiv.style.display = 'block';
+                quantityInput.max = data.quantity;
+            } else {
+                availabilityDiv.innerHTML = `
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Produto sem estoque</strong>
+                `;
+                availabilityDiv.className = 'alert alert-warning mt-2';
+                availabilityDiv.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Erro:', error);
+        }
+    }
+    
+    productSelect.addEventListener('change', updateAvailability);
+    if (locationSelect) {
+        locationSelect.addEventListener('change', updateAvailability);
+    }
+    
+    if (productSelect.value) {
+        updateAvailability();
+    }
+});
+</script>
+{% endblock %}

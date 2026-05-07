@@ -1,0 +1,70 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-danger text-white text-center py-4">
+                    <h2 class="mb-0">
+                        <i class="bi bi-x-circle me-2"></i>
+                        Cancelar Reserva
+                    </h2>
+                </div>
+                
+                <div class="card-body p-5">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Você está prestes a cancelar a reserva. O equipamento <strong>NÃO FOI UTILIZADO</strong> e o estoque será devolvido.
+                    </div>
+                    
+                    <h4 class="mb-4">Detalhes da Reserva:</h4>
+                    
+                    <table class="table table-bordered">
+                        <tr>
+                            <th width="40%" class="bg-light">Equipamento:</th>
+                            <td><strong>{{ stock_out.product.name }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Cliente:</th>
+                            <td>{{ stock_out.client.name }}</td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Quantidade:</th>
+                            <td>{{ stock_out.quantity }} unidade(s)</td>
+                        </tr>
+                        <tr>
+                            <th class="bg-light">Local:</th>
+                            <td>{{ stock_out.get_location_display }}</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="alert alert-info mt-4">
+                        <strong>O que vai acontecer:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>A reserva será marcada como cancelada</li>
+                            <li>O estoque será devolvido ({{ stock_out.quantity }} unidade(s))</li>
+                            <li>Esta ação não pode ser desfeita</li>
+                        </ul>
+                    </div>
+                    
+                    <form method="post" class="mt-4">
+                        {% csrf_token %}
+                        <div class="d-grid gap-3">
+                            <button type="submit" class="btn btn-danger btn-lg">
+                                <i class="bi bi-x-lg me-2"></i>
+                                Sim, cancelar reserva e devolver estoque
+                            </button>
+                            <a href="{% url 'confirm_reservation' stock_out.confirmation_token.token %}" 
+                               class="btn btn-outline-success btn-lg">
+                                <i class="bi bi-arrow-left me-2"></i>
+                                Voltar (na verdade foi utilizado)
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
