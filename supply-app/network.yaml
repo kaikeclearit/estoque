@@ -18,7 +18,7 @@ metadata:
   namespace: lab-tjce-bqzsv
 spec:
   rules:
-  - host: estoque.meulab.local # You can map this in your Windows hosts file later
+  - host: estoque.meulab.local 
     http:
       paths:
       - path: /
