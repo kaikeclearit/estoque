@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: supply-config
+  namespace: lab-tjce-bqzsv
+data:
+  # Configurações do Django
+  DEBUG: "False"
+  ALLOWED_HOSTS: "localhost,127.0.0.1,10.92.1.13,10.11.10.10,10.11.10.20,10.11.10.5,estoque.clearit.com.br"
+  
+  # Microsoft SSO (IDs públicos não são críticos, apenas a Secret Key)
+  MICROSOFT_CLIENT_ID: "45116cb8-e477-41d0-80ae-86fd7733bc27"
+  TENANT_ID: "5cc720f1-f13f-4949-8125-5a0f3feb932d"
+  
+  # Conexão com o Banco
+  DATABASE_HOST: "postgres" # Nome do serviço no K8s
+  DATABASE_PORT: "5432"
+  DATABASE_NAME: "postgres_db_stock"
+  DATABASE_USER: "clear_stock"
+  POSTGRES_USER: "clear_stock"
+  POSTGRES_DB: "postgres_db_stock"

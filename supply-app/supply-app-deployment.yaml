@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: supply-app
+  namespace: lab-tjce-bqzsv
+spec:
+  replicas: 2 # Vamos rodar 2 instâncias para Alta Disponibilidade!
+  selector:
+    matchLabels:
+      app: supply-app
+  template:
+    metadata:
+      labels:
+        app: supply-app
+    spec:
+      containers:
+      - name: web
+        image: seusuario/supply-web:v1
+        envFrom:
+        - configMapRef:
+            name: supply-config
+        - secretRef:
+            name: supply-secrets
+        ports:
+        - containerPort: 8000
+        volumeMounts:
+        - name: static-data
+          mountPath: /app/static
+
+      # 2. O Contêiner do Nginx (Reverse Proxy)
+      - name: nginx
+        image: seusuario/supply-nginx:v1 # Substitua pela sua imagem
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: static-data
+          mountPath: /app/static
+
+      volumes:
+      # Compartilha os estáticos entre os dois contêineres no mesmo Pod
+      - name: static-data
+        emptyDir: {}

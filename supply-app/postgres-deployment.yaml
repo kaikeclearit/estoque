@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: lab-tjce-bqzsv
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: web
+        image: kaikeclear/supply-web:v1
+        envFrom:
+        - configMapRef:
+            name: supply-config
+        - secretRef:
+            name: supply-secrets
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: pgdata
+          mountPath: /var/lib/postgresql/data
+      volumes:
+      - name: pgdata
+        persistentVolumeClaim:
+          claimName: postgres-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: lab-tjce-bqzsv
+spec:
+  ports:
+  - port: 5432
+  selector:
+    app: postgres
