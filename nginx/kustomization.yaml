@@ -3,8 +3,8 @@ kind: Kustomization
 resources:
   - postgres-pvc.yaml
   - postgres-deployment.yaml
-  - supply-config.yaml       # <-- ADD THIS
-  - supply-secrets.yaml      # <-- ADD THIS
+  - supply-config.yaml      
+  - supply-secrets.yaml      
   - supply-app-service.yaml
   - supply-app-deployment.yaml
   - network.yaml
