@@ -14,13 +14,16 @@ spec:
         app: postgres
     spec:
       containers:
-      - name: web
-        image: kaikeclear/supply-web:v1
-        envFrom:
-        - configMapRef:
-            name: supply-config
-        - secretRef:
-            name: supply-secrets
+      - name: postgres # Changed this from 'web'
+        image: postgres:15 # THE FIX: Using the official Database image!
+        env:
+        # We explicitly define the Postgres variables so it creates the right database on boot
+        - name: POSTGRES_DB
+          value: "postgres_db_stock"
+        - name: POSTGRES_USER
+          value: "clear_stock"
+        - name: POSTGRES_PASSWORD
+          value: "postgres_cleardb123"
         ports:
         - containerPort: 5432
         volumeMounts:
@@ -34,7 +37,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: postgres
+  name: postgres # <--- THIS IS YOUR DATABASE'S NETWORK NAME!
   namespace: lab-tjce-bqzsv
 spec:
   ports:
