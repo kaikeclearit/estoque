@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: supply-config
+  namespace: lab-tjce-bqzsv
+data:
+  DATABASE_NAME: "postgres_db_stock"
+  DATABASE_PORT: "5432"
+  # IMPORTANT: Ensure "postgres-service" matches your actual Postgres Service name
+  DATABASE_HOST: "postgres-service"

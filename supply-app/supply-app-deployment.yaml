@@ -4,7 +4,7 @@ metadata:
   name: supply-app
   namespace: lab-tjce-bqzsv
 spec:
-  replicas: 2 # Vamos rodar 2 instâncias para Alta Disponibilidade!
+  replicas: 2
   selector:
     matchLabels:
       app: supply-app
@@ -14,22 +14,39 @@ spec:
         app: supply-app
     spec:
       containers:
+      # 1. O Contêiner do Django (Python)
       - name: web
-        image: seusuario/supply-web:v1
+        image: kaikeclear/estoque-app:v3 # <-- TROQUEI PARA A IMAGEM QUE VOCÊ ACABOU DE CRIAR!
+        
+        # Se você já tiver criado esses arquivos no K8s, ótimo. Se não, eles vão dar erro (leia abaixo).
         envFrom:
         - configMapRef:
             name: supply-config
         - secretRef:
             name: supply-secrets
+            
+        # AQUI ENTRAM AS VARIÁVEIS QUE FALTAVAM PARA O BANCO DE DADOS!
+        env:
+        - name: DATABASE_NAME
+          value: "postgres_db_stock"
+        - name: DATABASE_USER
+          value: "clear_stock"
+        - name: DATABASE_PASSWORD
+          value: "postgres_cleardb123"
+        - name: DATABASE_PORT
+          value: "5432"
+        - name: DATABASE_HOST
+          value: "postgres-service" # Lembre de trocar pelo nome real do Service do seu Postgres!
+          
         ports:
         - containerPort: 8000
         volumeMounts:
         - name: static-data
           mountPath: /app/static
 
-      # 2. O Contêiner do Nginx (Reverse Proxy)
+      # 2. O Contêiner do Nginx (Reverse Proxy) - Mantém exatamente igual!
       - name: nginx
-        image: seusuario/supply-nginx:v1 # Substitua pela sua imagem
+        image: kaikeclear/supply-nginx:v1 
         ports:
         - containerPort: 80
         volumeMounts:
@@ -37,6 +54,5 @@ spec:
           mountPath: /app/static
 
       volumes:
-      # Compartilha os estáticos entre os dois contêineres no mesmo Pod
       - name: static-data
         emptyDir: {}
