@@ -8,3 +8,4 @@ resources:
   - supply-app-service.yaml
   - supply-app-deployment.yaml
   - network.yaml
+  - nginx-configmap.yaml

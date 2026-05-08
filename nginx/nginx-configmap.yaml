@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: lab-tjce-bqzsv
+data:
+  default.conf: |
+    upstream hello_django {
+        server 127.0.0.1:8000; # Corrigido para a porta real do Django
+    }
+
+    server {
+        listen 80; # Corrigido para a porta que o K8s espera
+
+        location /static/ {
+            alias /app/static/;
+        }
+
+        location /media/ {
+            alias /app/media/;
+        }
+
+        location / {
+            proxy_pass http://hello_django;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header Host $host;
+            proxy_redirect off;
+        }
+    }
