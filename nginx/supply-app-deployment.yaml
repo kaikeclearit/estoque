@@ -24,19 +24,6 @@ spec:
             name: supply-config
         - secretRef:
             name: supply-secrets
-            
-        # AQUI ENTRAM AS VARIÁVEIS QUE FALTAVAM PARA O BANCO DE DADOS!
-        env:
-        - name: DATABASE_NAME
-          value: "postgres_db_stock"
-        - name: DATABASE_USER
-          value: "clear_stock"
-        - name: DATABASE_PASSWORD
-          value: "postgres_cleardb123"
-        - name: DATABASE_PORT
-          value: "5432"
-        - name: DATABASE_HOST
-          value: "postgres-service" # Lembre de trocar pelo nome real do Service do seu Postgres!
           
         ports:
         - containerPort: 8000
