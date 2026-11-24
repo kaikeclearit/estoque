@@ -9,5 +9,7 @@ psycopg2-binary==2.9.13
 python-dotenv==1.2.4
 dj-database-url==3.1.2
 # dj-database-url: importado por setup/settings.py e setup/settings.dev.py.
-# pandas/openpyxl NÃO entram na imagem: app/importar.py é um script de carga
-# pontual. Para rodá-lo: pip install pandas openpyxl em um ambiente à parte.
+# openpyxl: usado por "manage.py importar_saldo_inicial" (carga da planilha).
+openpyxl==3.1.5
+et-xmlfile==2.0.0
+# pandas NÃO entra na imagem: app/importar.py (layout antigo) é legado.
