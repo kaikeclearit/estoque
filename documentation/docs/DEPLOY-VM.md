@@ -237,18 +237,23 @@ Conferir de vez em quando: `Get-Content "<destino>\puxar-backup.log" -Tail 5`.
 Guarde também uma cópia do `.env` em local seguro (cofre de senhas): sem a
 `DJANGO_SECRET_KEY` e a senha do banco, restaurar fica mais trabalhoso.
 
-### 7.2 Testar a restauração (faça uma vez agora e depois a cada poucos meses)
-Restaura num banco temporário, sem tocar no de produção:
+### 7.2 Testar a restauração (agora e a cada 2–3 meses)
+Restaura num banco temporário (`teste_restore`), compara a contagem de linhas de
+todas as tabelas com a produção e apaga o temporário. Produção não é alterada.
+
+**Pelo PC (recomendado — testa a cópia que está fora da VM):**
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\KaikeMaciel\Automações\estoque-prod\deploy\windows\testar-restauracao-estoque.ps1"
+```
+
+**Direto na VM (último backup da VM, ou um arquivo específico):**
 ```bash
 cd ~/estoque
-ULTIMO=$(sudo ls -t /var/backups/estoque/estoque-*.dump | head -1)
-docker compose exec -T db sh -c 'createdb -U "$POSTGRES_USER" teste_restore'
-sudo cat "$ULTIMO" | docker compose exec -T db sh -c \
-  'pg_restore --no-owner -U "$POSTGRES_USER" -d teste_restore'
-docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d teste_restore \
-  -c "select count(*) as produtos from core_product;"'
-docker compose exec -T db sh -c 'dropdb -U "$POSTGRES_USER" teste_restore'
+sh deploy/estoque-teste-restore.sh
+sh deploy/estoque-teste-restore.sh /var/backups/estoque/estoque-<DATA>.dump
 ```
+Resultado esperado: `restauração: ok`, mesmo número de tabelas, `TESTE OK`.
+Diferenças de contagem são normais se o sistema foi usado depois do backup.
 
 ### 7.3 Restaurar de verdade (desastre)
 ```bash
