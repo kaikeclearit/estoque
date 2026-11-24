@@ -151,7 +151,7 @@ docker compose up -d --build      # o serviço migrate roda as migrations novas
 
 | Sintoma | Causa provável |
 |---|---|
-| `Bad Request (400)` | Host/IP usado não está em `DJANGO_ALLOWED_HOSTS` |
+| `Bad Request (400)` | Host/IP usado não está em `DJANGO_ALLOWED_HOSTS` (inclua `localhost,127.0.0.1` para testar de dentro da VM) |
 | Login volta para a tela de login / erro 403 CSRF | `DJANGO_SECURE_COOKIES=true` com acesso por http, ou origem faltando em `DJANGO_CSRF_TRUSTED_ORIGINS` |
 | Container `web` reinicia em loop com "ERRO: DJANGO_SECRET_KEY..." | `.env` sem chave ou com menos de 50 caracteres |
 | Acesso intermitente ao 10.11.10.10 | VM antiga ainda ligada com o mesmo IP |
