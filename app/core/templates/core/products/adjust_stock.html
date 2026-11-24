@@ -1,0 +1,107 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Ajustar saldo{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <nav aria-label="Trilha de navegação">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'product_list' %}">Produtos</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Ajustar saldo</li>
+            </ol>
+        </nav>
+        <h1>Ajustar saldo</h1>
+        <p class="page-meta">{{ product.name }} · {{ product.manufacturer|default:"—" }} · {{ product.model|default:"—" }}</p>
+    </div>
+</div>
+
+<div class="card form-panel mb-4">
+    <div class="card-body">
+        <div class="alert alert-warning">
+            <i class="bi bi-shield-lock" aria-hidden="true"></i>
+            <div class="alert-body">
+                Recurso exclusivo do Admin. Informe o saldo <strong>correto</strong> de cada localidade:
+                o valor é gravado direto, sem gerar entrada ou saída. Cada alteração fica registrada
+                (antes, depois, motivo e responsável) em Histórico › Ajustes de saldo.
+            </div>
+        </div>
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger" role="alert"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><div class="alert-body">{{ form.non_field_errors }}</div></div>
+            {% endif %}
+
+            <div class="table-responsive border rounded mb-3">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th scope="col">Localidade</th>
+                            <th scope="col" class="num">Saldo atual</th>
+                            <th scope="col" style="width: 40%">Novo saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for field in qty_fields %}
+                        <tr>
+                            <td><label class="fw-semibold mb-0" for="{{ field.id_for_label }}">{{ field.label }}</label></td>
+                            <td class="num">{{ field.field.current }}</td>
+                            <td>
+                                {{ field }}
+                                {% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="{{ form.reason.id_for_label }}">{{ form.reason.label }}<span class="required-mark" aria-hidden="true">*</span></label>
+                {{ form.reason }}
+                {% if form.reason.errors %}<div class="field-error">{{ form.reason.errors }}</div>{% endif %}
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Salvar ajuste</button>
+                <a href="{% url 'product_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if history %}
+<section class="card form-panel" aria-labelledby="ajustes-titulo">
+    <div class="card-header">
+        <h2 id="ajustes-titulo" class="section-title">Últimos ajustes deste produto</h2>
+    </div>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Data</th>
+                    <th scope="col">Local</th>
+                    <th scope="col" class="num">Antes</th>
+                    <th scope="col" class="num">Depois</th>
+                    <th scope="col">Motivo</th>
+                    <th scope="col">Por</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for adj in history %}
+                <tr>
+                    <td class="cell-date">{{ adj.created_at|date:"d/m/Y H:i" }}</td>
+                    <td class="cell-code">{{ adj.location_id }}</td>
+                    <td class="num text-muted">{{ adj.old_quantity }}</td>
+                    <td class="num fw-semibold">{{ adj.new_quantity }}</td>
+                    <td>{{ adj.reason }}</td>
+                    <td>{{ adj.employee.first_name|default:adj.employee.username }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+{% endblock %}

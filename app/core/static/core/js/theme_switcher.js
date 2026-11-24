@@ -1,88 +1,73 @@
 // ============================================
-// CLEARIT THEME SWITCHER - VERSÃO CORRIGIDA
+// ClearIT - alternância de tema claro/escuro
+// - Aplica o tema salvo (localStorage 'theme') em <html> como
+//   data-theme (tema ClearIT) e data-bs-theme (modo escuro nativo do Bootstrap).
+// - O <head> do base.html já aplica o tema antes da pintura (evita "piscar");
+//   este script liga o botão #themeToggle e o cria se a página não tiver um.
 // ============================================
 
-(function() {
+(function () {
     'use strict';
 
-    // Carregar tema salvo ou usar padrão (claro)
-    const currentTheme = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-theme', currentTheme);
+    var STORAGE_KEY = 'theme';
+    var root = document.documentElement;
 
-    // Função para criar o botão de toggle
-    function createThemeToggle() {
-        // Procurar o container do navbar
-        const navbarNav = document.querySelector('.navbar-nav.ms-auto');
-        
-        if (!navbarNav) {
-            console.warn('Navbar não encontrado, tentando novamente...');
-            return false;
+    function readTheme() {
+        try {
+            return localStorage.getItem(STORAGE_KEY) === 'dark' ? 'dark' : 'light';
+        } catch (e) {
+            return 'light';
         }
+    }
 
-        // Verificar se já existe
-        if (document.getElementById('themeToggle')) {
-            console.log('Toggle já existe');
-            return true;
-        }
-
-        // Criar elemento do toggle
-        const toggleWrapper = document.createElement('div');
-        toggleWrapper.className = 'd-flex align-items-center me-3';
-        toggleWrapper.innerHTML = `
-            <div class="theme-toggle" id="themeToggle" title="Alternar tema" style="cursor: pointer;">
-                <div class="theme-toggle-slider"></div>
-            </div>
-        `;
-
-        // Inserir como primeiro elemento do navbar-nav
-        navbarNav.insertBefore(toggleWrapper, navbarNav.firstChild);
-
-        // Adicionar event listener
-        const toggle = document.getElementById('themeToggle');
+    function applyTheme(theme) {
+        root.setAttribute('data-theme', theme);
+        root.setAttribute('data-bs-theme', theme);
+        var toggle = document.getElementById('themeToggle');
         if (toggle) {
-            toggle.addEventListener('click', toggleTheme);
-            console.log('✅ Theme toggle criado com sucesso!');
-            return true;
+            var dark = theme === 'dark';
+            toggle.setAttribute('aria-pressed', dark ? 'true' : 'false');
+            toggle.setAttribute('title', dark ? 'Usar tema claro' : 'Usar tema escuro');
         }
-
-        return false;
     }
 
-    // Função para alternar tema
     function toggleTheme() {
-        const currentTheme = document.documentElement.getAttribute('data-theme');
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-        
-        console.log(`Mudando tema de ${currentTheme} para ${newTheme}`);
-        
-        document.documentElement.setAttribute('data-theme', newTheme);
-        localStorage.setItem('theme', newTheme);
-        
-        // Animação suave
-        document.body.style.transition = 'background-color 0.3s ease, color 0.3s ease';
+        var next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        try { localStorage.setItem(STORAGE_KEY, next); } catch (e) { /* modo privado */ }
+        applyTheme(next);
     }
 
-    // Tentar criar o toggle várias vezes (fallback)
-    function tryCreateToggle(attempts = 0) {
-        const maxAttempts = 10;
-        
-        if (attempts >= maxAttempts) {
-            console.error('❌ Não foi possível criar o theme toggle após', maxAttempts, 'tentativas');
-            return;
+    function ensureToggle() {
+        var toggle = document.getElementById('themeToggle');
+        if (!toggle) {
+            var host = document.querySelector('.navbar-nav.ms-auto');
+            if (!host) return null;
+            toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.id = 'themeToggle';
+            toggle.className = 'btn btn-sm btn-theme';
+            toggle.innerHTML = '<i class="bi bi-moon icon-light" aria-hidden="true"></i>' +
+                               '<i class="bi bi-sun icon-dark" aria-hidden="true"></i>' +
+                               '<span class="visually-hidden">Tema escuro</span>';
+            host.insertBefore(toggle, host.firstChild);
         }
-
-        const success = createThemeToggle();
-        
-        if (!success) {
-            setTimeout(() => tryCreateToggle(attempts + 1), 100);
-        }
+        return toggle;
     }
 
-    // Inicializar quando DOM estiver pronto
+    applyTheme(readTheme());
+
+    function init() {
+        var toggle = ensureToggle();
+        if (toggle && !toggle.dataset.bound) {
+            toggle.dataset.bound = '1';
+            toggle.addEventListener('click', toggleTheme);
+        }
+        applyTheme(readTheme());
+    }
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => tryCreateToggle());
+        document.addEventListener('DOMContentLoaded', init);
     } else {
-        tryCreateToggle();
+        init();
     }
-
 })();

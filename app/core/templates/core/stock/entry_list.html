@@ -1,50 +1,59 @@
 {% extends 'core/base.html' %}
 
+{% block title %}Histórico de entradas{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2><i class="bi bi-box-arrow-in-down text-success"></i> Histórico de Entradas</h2>
-    <a href="{% url 'entry_create' %}" class="btn btn-success">
-        <i class="bi bi-plus-lg"></i> Nova Entrada
-    </a>
+<div class="page-header">
+    <div>
+        <nav aria-label="Trilha de navegação">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'movements_list' %}">Histórico</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Entradas</li>
+            </ol>
+        </nav>
+        <h1>Histórico de entradas</h1>
+    </div>
+    <div class="page-actions">
+        {% if perms.core.add_stockentry %}
+        <a href="{% url 'entry_create' %}" class="btn btn-primary">
+            <i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i>Registrar entrada
+        </a>
+        {% endif %}
+    </div>
 </div>
 
-<div class="card shadow-sm">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Data</th>
-                        <th>Produto</th>
-                        <th>NF</th>
-                        <th class="text-center">Destino</th>
-                        <th class="text-center">Qtd.</th>
-                        <th>Responsável</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in entries %}
-                    <tr>
-                        <td class="text-muted small">{{ item.created_at|date:"d/m/Y H:i" }}</td>
-                        <td class="fw-bold">{{ item.product.name }}</td>
-                        <td>{{ item.nf_number|default:"-" }}</td>
-                        
-                        <td class="text-center">
-                            <span class="badge bg-secondary">{{ item.location }}</span>
-                        </td>
-                        
-                        <td class="text-center fw-bold text-success">+{{ item.quantity }}</td>
-                        
-                        <td class="small">
-                            <i class="bi bi-person"></i> {{ item.employee.first_name|default:item.employee.username }}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="6" class="text-center py-5">Nenhuma entrada registrada.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Data</th>
+                    <th scope="col">Produto</th>
+                    <th scope="col">Nota fiscal</th>
+                    <th scope="col">Destino</th>
+                    <th scope="col" class="num">Qtd.</th>
+                    <th scope="col">Responsável</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in entries %}
+                <tr>
+                    <td class="cell-date">{{ item.created_at|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        <span class="cell-title">{{ item.product.name }}</span>
+                        {% if item.product.is_deleted %}<span class="tag" title="Produto excluído em {{ item.product.deleted_at|date:'d/m/Y' }}">Produto excluído</span>{% endif %}
+                    </td>
+                    <td class="tabular">{{ item.nf_number|default:"—" }}</td>
+                    <td class="cell-code" title="{{ item.location.name }}">{{ item.location_id }}</td>
+                    <td class="num qty-in">+{{ item.quantity }}</td>
+                    <td>{{ item.employee.first_name|default:item.employee.username }}</td>
+                </tr>
+                {% empty %}
+                <tr class="empty-row"><td colspan="6">Nenhuma entrada registrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
+    {% include 'core/_pagination.html' with page=page_obj param='page' %}
 </div>
 {% endblock %}

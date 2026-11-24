@@ -1,0 +1,65 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Localidades{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Localidades</h1>
+        <p class="page-meta">Locais onde o estoque é controlado</p>
+    </div>
+    <div class="page-actions">
+        {% if perms.core.add_location %}
+        <a href="{% url 'location_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Nova localidade
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Código</th>
+                    <th scope="col">Nome</th>
+                    <th scope="col" class="num">Itens controlados</th>
+                    <th scope="col" class="num">Unidades em estoque</th>
+                    <th scope="col">Situação</th>
+                    <th scope="col" class="cell-actions"><span class="visually-hidden">Ações</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loc in locations %}
+                <tr {% if not loc.is_active %}class="row-muted"{% endif %}>
+                    <td class="cell-code">{{ loc.code }}</td>
+                    <td>{{ loc.name }}</td>
+                    <td class="num">{{ loc.items }}</td>
+                    <td class="num">{{ loc.units|default:0 }}</td>
+                    <td>
+                        {% if loc.is_active %}<span class="status status-plain status-success">Ativa</span>
+                        {% else %}<span class="status status-plain">Inativa</span>{% endif %}
+                    </td>
+                    <td class="cell-actions">
+                        <div class="row-actions">
+                            <a href="{% url 'location_update' loc.pk %}" class="btn btn-icon"
+                               title="Editar" aria-label="Editar {{ loc.code }}">
+                                <i class="bi bi-pencil" aria-hidden="true"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr class="empty-row"><td colspan="6">Nenhuma localidade cadastrada.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<p class="note note-muted">
+    Localidade inativa sai dos formulários de entrada e saída, dos filtros e do painel de alertas;
+    o histórico dela é mantido. Localidades não são apagadas, para preservar o histórico.
+</p>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{{ order }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <nav aria-label="Trilha de navegação">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'movements_list' %}">Histórico</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ order }}</li>
+            </ol>
+        </nav>
+        <h1>{{ order }}</h1>
+        <p class="page-meta">{{ order.created_at|date:"d/m/Y H:i" }} · por {{ order.employee.get_full_name|default:order.employee.username }}</p>
+    </div>
+    <div class="page-actions">
+        {% if perms.core.add_stockout %}
+        <a href="{% url 'cart' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Nova saída</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <dl class="detail-list">
+            <dt>Destino / cliente</dt><dd>{{ order.client.name }}</dd>
+            <dt>Tipo</dt><dd>{{ items.0.get_movement_type_display|default:order.movement_type }}</dd>
+            {% if order.project %}<dt>Projeto / referência</dt><dd>{{ order.project }}</dd>{% endif %}
+            {% if order.observation %}<dt>Observação</dt><dd class="fw-normal">{{ order.observation|linebreaksbr }}</dd>{% endif %}
+        </dl>
+    </div>
+</div>
+
+<section class="card" aria-labelledby="itens-titulo">
+    <div class="card-header">
+        <h2 id="itens-titulo" class="section-title">Itens</h2>
+    </div>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Produto</th>
+                    <th scope="col">Local</th>
+                    <th scope="col" class="num">Qtd.</th>
+                    <th scope="col">Situação</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for out in items %}
+                <tr {% if out.is_cancelled %}class="row-muted"{% endif %}>
+                    <td>
+                        <span class="cell-title">{{ out.product.name }}</span>
+                        {% if out.product.is_deleted %}<span class="tag">Produto excluído</span>{% endif %}
+                    </td>
+                    <td class="cell-code" title="{{ out.location.name }}">{{ out.location_id }}</td>
+                    <td class="num qty-out">−{{ out.quantity }}</td>
+                    <td>
+                        {% if out.is_cancelled %}
+                            <span class="status status-plain">Revertida</span>
+                            <span class="cell-sub">em {{ out.cancelled_at|date:"d/m/Y H:i" }}{% if out.cancelled_by %} por {{ out.cancelled_by.first_name|default:out.cancelled_by.username }}{% endif %}</span>
+                        {% else %}
+                            <span class="status status-plain status-success">Baixada</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

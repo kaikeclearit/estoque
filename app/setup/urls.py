@@ -24,6 +24,5 @@ urlpatterns = [
     
     # Esta linha diz: "Para qualquer outra URL, procure no arquivo urls.py do app core"
     path('', include('core.urls')), 
-    path('accounts/', include('allauth.urls')),
     #path("__reload__/", include("django_browser_reload.urls")),
 ]

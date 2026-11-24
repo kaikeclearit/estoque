@@ -21,25 +21,60 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
+# ---------------------------------------------------------------------------
+# Configuração de produção lida do ambiente.
+# Este módulo PRECISA importar sem nenhuma variável de ambiente (dev local,
+# collectstatic no build). A garantia de que produção tem SECRET_KEY real e
+# DEBUG desligado fica no entrypoint (app/entrypoint.sh) e no Job de migrate
+# (`manage.py check --deploy`), não aqui.
+# ---------------------------------------------------------------------------
+def _env_bool(name, default=False):
+    value = os.environ.get(name)
+    if value is None or value.strip() == '':
+        return default
+    return value.strip().lower() in ('1', 'true', 'yes', 'on')
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-6*@zu1@@mriy5l+@ko6!+2@ss)x@ef@==2tf%m2s66i-)tz1*m'
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG')
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '10.92.1.13', '10.11.10.10','10.11.10.5', '10.11.10.20', 'estoque.clearit.com.br'] 
+def _env_list(name, default):
+    value = os.environ.get(name)
+    if value is None or value.strip() == '':
+        return list(default)
+    return [item.strip() for item in value.split(',') if item.strip()]
 
+
+# Chave de fallback SOMENTE para desenvolvimento. O entrypoint recusa subir
+# o container com ela (ou sem DJANGO_SECRET_KEY).
+INSECURE_DEV_SECRET_KEY = 'django-insecure-dev-only-NAO-USAR-EM-PRODUCAO'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY') or INSECURE_DEV_SECRET_KEY
+
+# "False", "0", "" e ausência => False. Só "1/true/yes/on" liga o DEBUG.
+DEBUG = _env_bool('DEBUG', default=False)
+
+ALLOWED_HOSTS = _env_list('DJANGO_ALLOWED_HOSTS', [
+    '127.0.0.1', 'localhost', 'estoque.clearit.com.br',
+])
+
+CSRF_TRUSTED_ORIGINS = _env_list('DJANGO_CSRF_TRUSTED_ORIGINS', [
+    'https://estoque.clearit.com.br',
+    'http://localhost:8000', 'http://127.0.0.1:8000',
+    'http://localhost:8080', 'http://127.0.0.1:8080',
+])
+
+# Atrás do Ingress: o controller define X-Forwarded-Proto/Host.
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
- 
 USE_X_FORWARDED_HOST = True
 
+# Flags HTTPS: desligadas por padrão (dev em http) e ligadas via ConfigMap
+# quando o Ingress estiver servindo TLS.
+SESSION_COOKIE_SECURE = _env_bool('DJANGO_SECURE_COOKIES', default=False)
+CSRF_COOKIE_SECURE = SESSION_COOKIE_SECURE
+SECURE_SSL_REDIRECT = _env_bool('DJANGO_SECURE_SSL_REDIRECT', default=False)
+SECURE_HSTS_SECONDS = int(os.environ.get('DJANGO_SECURE_HSTS_SECONDS') or 0)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
 
-SITE_URL = 'https://estoque.clearit.com.br'
 
-
-RESERVATION_WEBHOOK_URL = os.getenv('RESERVATION_WEBHOOK_URL')
 
 # Application definition
 
@@ -52,10 +87,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sites',
     'core',
-    'allauth',
-    'allauth.account',
-    'allauth.socialaccount',
-    'allauth.socialaccount.providers.microsoft',
     #'django_browser_reload',
 ]
 
@@ -63,15 +94,15 @@ SITE_ID = 1
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # WhiteNoise deve vir logo após o SecurityMiddleware.
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'allauth.account.middleware.AccountMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     #'django_browser_reload.middleware.BrowserReloadMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 ROOT_URLCONF = 'setup.urls'
@@ -148,6 +179,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = '/static/'
+# Na imagem: /app_root/app/static (preenchido por collectstatic no build e
+# servido pelo WhiteNoise).
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'core', 'static'),
@@ -166,56 +199,44 @@ LOGIN_REDIRECT_URL = 'home'
 LOGIN_URL = 'login'
 
 AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend', # Login padrão
-    'allauth.account.auth_backends.AuthenticationBackend', # Login Microsoft
+    'django.contrib.auth.backends.ModelBackend',  # Login local (usuário e senha)
 ]
 
-# Configurações do Allauth
-ACCOUNT_EMAIL_VERIFICATION = "none" # Não pedir pra confirmar e-mail (agiliza)
-SOCIALACCOUNT_LOGIN_ON_GET = True # Logar direto sem tela intermediária
-
-# As chaves que pegamos no Azure (SUBSTITUA PELAS SUAS!)
-SOCIALACCOUNT_PROVIDERS = {
-    'microsoft': {
-        'APP': {
-            'client_id': os.environ.get('MICROSOFT_CLIENT_ID'),
-            'secret': os.environ.get('MICROSOFT_SECRET_KEY'),
-            'key': ''
-        },
-        'TENANT': os.environ.get('TENANT_ID'),
-
-
-        'SCOPE': ['User.Read', 'profile', 'openid', 'email'],
-        
-        'AUTH_PARAMS': {
-            'prompt': 'select_account',
-        },
-        
-        # 3. Garante que estamos usando o protocolo moderno
-        'METHOD': 'oauth2',
-        'VERIFIED_EMAIL': True,
-    }
+# STATICFILES_STORAGE foi removido no Django 5.1 -> usar STORAGES.
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
 }
 
-STATIC_URL = 'static/'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-# settings.py
-
-# 1. Tenta pular o formulário usando os dados do provedor
-SOCIALACCOUNT_AUTO_SIGNUP = True
-
-# 2. Ignora a verificação de e-mail (confia que a Microsoft já verificou)
-ACCOUNT_EMAIL_VERIFICATION = "none"
-SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
-
-# 3. Se o e-mail já existir no banco, conecta automaticamente sem perguntar
-# (Cuidado: só use se confiar 100% que o dono do e-mail Microsoft é o mesmo da conta local)
-SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
-SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
-
-# 4. (O Pulo do Gato) Gera um username aleatório se der conflito, para não travar na tela
-ACCOUNT_ADAPTER = "core.adapters.MyAccountAdapter"
-SOCIALACCOUNT_ADAPTER = "core.adapters.MySocialAccountAdapter"
-
-ACCOUNT_LOGOUT_ON_GET = True
+# Logs em stdout/stderr (coletados pelo Kubernetes).
+LOG_LEVEL = os.environ.get('DJANGO_LOG_LEVEL', 'INFO').upper()
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'default': {
+            'format': '%(asctime)s %(levelname)s %(name)s %(message)s',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'default',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': LOG_LEVEL,
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+    },
+}

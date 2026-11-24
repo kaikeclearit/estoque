@@ -43,10 +43,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sites',
     'core',
-    'allauth',
-    'allauth.account',
-    'allauth.socialaccount',
-    'allauth.socialaccount.providers.microsoft',
     'django_browser_reload',
 ]
 
@@ -58,7 +54,6 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'allauth.account.middleware.AccountMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django_browser_reload.middleware.BrowserReloadMiddleware',
@@ -155,54 +150,8 @@ LOGIN_REDIRECT_URL = 'home'
 LOGIN_URL = 'login'
 
 AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend', # Login padrão
-    'allauth.account.auth_backends.AuthenticationBackend', # Login Microsoft
+    'django.contrib.auth.backends.ModelBackend',  # Login local (usuário e senha)
 ]
-
-# Configurações do Allauth
-ACCOUNT_EMAIL_VERIFICATION = "none" # Não pedir pra confirmar e-mail (agiliza)
-SOCIALACCOUNT_LOGIN_ON_GET = True # Logar direto sem tela intermediária
-
-# As chaves que pegamos no Azure (SUBSTITUA PELAS SUAS!)
-SOCIALACCOUNT_PROVIDERS = {
-    'microsoft': {
-        'APP': {
-            'client_id': os.environ.get('MICROSOFT_CLIENT_ID'),
-            'secret': os.environ.get('MICROSOFT_SECRET_KEY'),
-            'key': ''
-        },
-        'TENANT': os.environ.get('TENANT_ID'),
-
-
-        'SCOPE': ['User.Read', 'profile', 'openid', 'email'],
-        
-        'AUTH_PARAMS': {
-            'prompt': 'select_account',
-        },
-        
-        # 3. Garante que estamos usando o protocolo moderno
-        'METHOD': 'oauth2',
-        'VERIFIED_EMAIL': True,
-    }
-}
 
 STATIC_URL = 'static/'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-# settings.py
-
-# 1. Tenta pular o formulário usando os dados do provedor
-SOCIALACCOUNT_AUTO_SIGNUP = True
-
-# 2. Ignora a verificação de e-mail (confia que a Microsoft já verificou)
-ACCOUNT_EMAIL_VERIFICATION = "none"
-SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
-
-# 3. Se o e-mail já existir no banco, conecta automaticamente sem perguntar
-# (Cuidado: só use se confiar 100% que o dono do e-mail Microsoft é o mesmo da conta local)
-SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
-SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
-
-# 4. (O Pulo do Gato) Gera um username aleatório se der conflito, para não travar na tela
-ACCOUNT_ADAPTER = "core.adapters.MyAccountAdapter"
-SOCIALACCOUNT_ADAPTER = "core.adapters.MySocialAccountAdapter"

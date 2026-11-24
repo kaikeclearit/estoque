@@ -1,0 +1,102 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Usuários{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Usuários</h1>
+        <p class="page-meta">Acesso ao sistema e perfis</p>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'user_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Novo usuário
+        </a>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="panel-toolbar">
+        <form method="get" class="search-form" role="search">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
+                <label for="busca-usuario" class="visually-hidden">Buscar usuário</label>
+                <input type="search" id="busca-usuario" name="search" class="form-control"
+                       placeholder="Usuário, nome ou e-mail" value="{{ search_query }}">
+            </div>
+            <button type="submit" class="btn btn-outline-secondary btn-sm">Buscar</button>
+            {% if search_query %}
+            <a href="?" class="btn btn-link btn-sm px-1">Limpar</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Usuário</th>
+                    <th scope="col">Nome</th>
+                    <th scope="col">E-mail</th>
+                    <th scope="col">Perfil</th>
+                    <th scope="col">Situação</th>
+                    <th scope="col" class="cell-actions"><span class="visually-hidden">Ações</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr {% if not u.is_active %}class="row-muted"{% endif %}>
+                    <td>
+                        <span class="cell-title">{{ u.username }}</span>
+                        {% if u.is_superuser %}<span class="tag" title="Superusuário">super</span>{% endif %}
+                    </td>
+                    <td>{{ u.get_full_name|default:"—" }}</td>
+                    <td>{{ u.email|default:"—" }}</td>
+                    <td>
+                        {% with role=u.role %}
+                        {% if role %}
+                            {{ role }}
+                        {% else %}
+                            <span class="text-muted" title="Sem perfil: somente leitura">Sem perfil</span>
+                        {% endif %}
+                        {% endwith %}
+                    </td>
+                    <td>
+                        {% if u.is_active %}
+                            <span class="status status-plain status-success">Ativo</span>
+                        {% else %}
+                            <span class="status status-plain">Inativo</span>
+                        {% endif %}
+                    </td>
+                    <td class="cell-actions">
+                        <div class="row-actions">
+                            {% if not u.is_superuser or request.user.is_superuser %}
+                            <a href="{% url 'user_update' u.pk %}" class="btn btn-icon"
+                               title="Editar" aria-label="Editar {{ u.username }}">
+                                <i class="bi bi-pencil" aria-hidden="true"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr class="empty-row">
+                    <td colspan="6">Nenhum usuário encontrado{% if search_query %} para "<strong>{{ search_query }}</strong>"{% endif %}.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include 'core/_pagination.html' with page=page_obj param='page' %}
+</div>
+
+<section class="note" aria-labelledby="perfis-titulo">
+    <h2 id="perfis-titulo" class="section-title mb-2">Perfis de acesso</h2>
+    <ul>
+        {% for role, desc in role_descriptions.items %}
+        <li><strong>{{ role }}:</strong> {{ desc }}</li>
+        {% endfor %}
+        <li><strong>Sem perfil:</strong> somente leitura</li>
+    </ul>
+</section>
+{% endblock %}
