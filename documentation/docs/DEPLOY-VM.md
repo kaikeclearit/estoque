@@ -183,30 +183,77 @@ Acompanhar: `systemctl list-timers estoque-backup.timer` (próxima execução) e
 `systemctl --failed` (aparece se algum backup falhar).
 
 ### 7.1 Cópia fora da VM (obrigatório)
-Backup só dentro da VM não protege contra perda da VM/disco. Escolha um:
-- **Pasta de rede:** monte um NFS/SMB do NAS/servidor de arquivos (ex.: em
-  `/mnt/backup-estoque`, via `/etc/fstab`) e defina
-  `Environment=BACKUP_COPY_TO=/mnt/backup-estoque` em
-  `/etc/systemd/system/estoque-backup.service`, depois `sudo systemctl daemon-reload`.
-- **Ferramenta de backup corporativa** (Veeam, Commvault etc.): incluir a pasta
-  `/var/backups/estoque` no job da VM.
-- **Snapshot/Protection Domain do Nutanix:** complementa, mas não substitui o dump.
+Backup só dentro da VM não protege contra perda da VM/disco. Opções:
+- **PC/servidor Windows puxando da VM** (solução provisória, abaixo);
+- **ExaGrid/Veeam/Commvault:** incluir `/var/backups/estoque` no job da VM;
+- **Pasta de rede montada** (NFS/SMB): `Environment=BACKUP_COPY_TO=/mnt/...`
+  em `/etc/systemd/system/estoque-backup.service`;
+- Snapshot/Protection Domain do Nutanix complementa, mas não substitui o dump.
+
+#### PC Windows puxando os backups (provisório)
+O PC busca os dumps quando está ligado (agendado diário e ao fazer logon),
+copia só os que faltam e confere o tamanho. Se o PC ficar desligado alguns dias,
+na próxima execução ele pega tudo que ficou para trás (a VM guarda 30 dias).
+
+**1. Na VM** — deixar os dumps legíveis pelo usuário SSH:
+```bash
+sudo sed -i "s#^Environment=BACKUP_OWNER=.*#Environment=BACKUP_OWNER=$USER#" /etc/systemd/system/estoque-backup.service
+sudo systemctl daemon-reload
+sudo systemctl start estoque-backup.service
+ls -l /var/backups/estoque        # dono = seu usuário
+```
+
+**2. No PC (PowerShell, sem admin)** — chave SSH sem senha só para isso:
+```powershell
+ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\estoque_backup" -N '""' -C "backup-estoque-pc"
+type "$env:USERPROFILE\.ssh\estoque_backup.pub" | ssh <usuario>@<IP_DA_VM> "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+Add-Content "$env:USERPROFILE\.ssh\config" "`nHost estoque-vm`n  HostName <IP_DA_VM>`n  User <usuario>`n  IdentityFile ~/.ssh/estoque_backup`n"
+ssh -o BatchMode=yes estoque-vm "ls /var/backups/estoque"   # deve listar sem pedir senha
+```
+
+**3. Testar o script e agendar:**
+```powershell
+$script  = "<caminho do repo>\deploy\windows\puxar-backup-estoque.ps1"
+$destino = "<pasta de destino no PC>"
+powershell -NoProfile -ExecutionPolicy Bypass -File $script -Vm estoque-vm -Destino $destino
+Get-Content "$destino\puxar-backup.log" -Tail 3            # "ok: N novo(s)"
+
+$acao = New-ScheduledTaskAction -Execute "powershell.exe" `
+  -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$script`" -Vm estoque-vm -Destino `"$destino`""
+$gatilhos = @(
+  (New-ScheduledTaskTrigger -Daily -At 9am),
+  (New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME)
+)
+$cfg = New-ScheduledTaskSettingsSet -StartWhenAvailable -RunOnlyIfNetworkAvailable
+Register-ScheduledTask -TaskName "Estoque - puxar backup" -Action $acao -Trigger $gatilhos -Settings $cfg
+```
+Conferir de vez em quando: `Get-Content "<destino>\puxar-backup.log" -Tail 5`.
+
+> Os dumps têm dados do sistema: a pasta de destino não deve ser
+> compartilhada nem ficar dentro de um repositório git (o `.gitignore` já ignora
+> `*.dump` e `backups/` por segurança). Quando o ExaGrid/Veeam estiver
+> disponível, desative a tarefa (`Disable-ScheduledTask "Estoque - puxar backup"`).
 
 Guarde também uma cópia do `.env` em local seguro (cofre de senhas): sem a
 `DJANGO_SECRET_KEY` e a senha do banco, restaurar fica mais trabalhoso.
 
-### 7.2 Testar a restauração (faça uma vez agora e depois a cada poucos meses)
-Restaura num banco temporário, sem tocar no de produção:
+### 7.2 Testar a restauração (agora e a cada 2–3 meses)
+Restaura num banco temporário (`teste_restore`), compara a contagem de linhas de
+todas as tabelas com a produção e apaga o temporário. Produção não é alterada.
+
+**Pelo PC (recomendado — testa a cópia que está fora da VM):**
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Users\KaikeMaciel\Automações\estoque-prod\deploy\windows\testar-restauracao-estoque.ps1"
+```
+
+**Direto na VM (último backup da VM, ou um arquivo específico):**
 ```bash
 cd ~/estoque
-ULTIMO=$(sudo ls -t /var/backups/estoque/estoque-*.dump | head -1)
-docker compose exec -T db sh -c 'createdb -U "$POSTGRES_USER" teste_restore'
-sudo cat "$ULTIMO" | docker compose exec -T db sh -c \
-  'pg_restore --no-owner -U "$POSTGRES_USER" -d teste_restore'
-docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d teste_restore \
-  -c "select count(*) as produtos from core_product;"'
-docker compose exec -T db sh -c 'dropdb -U "$POSTGRES_USER" teste_restore'
+sh deploy/estoque-teste-restore.sh
+sh deploy/estoque-teste-restore.sh /var/backups/estoque/estoque-<DATA>.dump
 ```
+Resultado esperado: `restauração: ok`, mesmo número de tabelas, `TESTE OK`.
+Diferenças de contagem são normais se o sistema foi usado depois do backup.
 
 ### 7.3 Restaurar de verdade (desastre)
 ```bash
