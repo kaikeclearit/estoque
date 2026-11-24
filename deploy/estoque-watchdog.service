@@ -1,0 +1,9 @@
+[Unit]
+Description=Vigia do Sistema de Estoque ClearIT
+Requires=docker.service
+After=docker.service estoque.service
+
+[Service]
+Type=oneshot
+Environment=ESTOQUE_DIR=/opt/estoque
+ExecStart=/bin/sh /opt/estoque/deploy/estoque-watchdog.sh

@@ -23,12 +23,6 @@ spec:
     spec:
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: 40
-      # Credencial do Docker Hub (repositório privado). Se o Secret não existir,
-      # o pull segue anônimo (funciona se o repositório for público).
-      #   kubectl -n lab-tjce-bqzsv create secret docker-registry dockerhub-cred \
-      #     --docker-username=kaikeclear --docker-password=<TOKEN_READ_ONLY>
-      imagePullSecrets:
-        - name: dockerhub-cred
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001

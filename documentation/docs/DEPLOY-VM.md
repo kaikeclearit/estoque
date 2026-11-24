@@ -4,8 +4,8 @@ Sistema de Estoque ClearIT rodando numa VM única, no IP **10.11.10.10**
 (o mesmo da antiga VM no VMware). App (Gunicorn + WhiteNoise) e Postgres em
 containers; acesso em `http://10.11.10.10`.
 
-> Alternativa: o mesmo sistema pode rodar no Kubernetes (NKP) com os manifests
-> da pasta `nginx/`. Este guia cobre só a VM.
+> Produção roda **só na VM** com Docker Compose. Os manifests da pasta `nginx/`
+> (Kubernetes) não estão em uso.
 
 ---
 
@@ -124,7 +124,41 @@ Pós-vendas, Pré-vendas). Quem estava no grupo antigo "Gestores" já vira
 
 ---
 
-## 6. Backup diário
+## 6. Subida automática (nunca mais dar `up` na mão)
+
+Três camadas, cada uma cobre uma falha diferente:
+
+| Camada | Cobre |
+|---|---|
+| `restart: always` no compose (web e db) | processo/container caiu → Docker reinicia na hora |
+| `estoque.service` (systemd) | VM reiniciou, ou alguém rodou `docker compose down` antes do reboot |
+| `estoque-watchdog.timer` (a cada 2 min) | container parado/removido, ou web travado (`unhealthy`) |
+
+Instalação (uma vez; se o projeto **não** estiver em `/opt/estoque`, ajuste
+`WorkingDirectory`, `ESTOQUE_DIR` e o caminho do script nos arquivos de `deploy/`):
+```bash
+sudo systemctl enable docker containerd
+sudo cp /opt/estoque/deploy/estoque.service \
+        /opt/estoque/deploy/estoque-watchdog.service \
+        /opt/estoque/deploy/estoque-watchdog.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now estoque.service estoque-watchdog.timer
+```
+
+Teste (faça agora, não no dia do problema):
+```bash
+docker compose kill web; sleep 5; docker compose ps          # web volta sozinho
+docker compose down; sudo systemctl start estoque-watchdog.service; docker compose ps   # volta
+sudo reboot        # depois: curl -I http://localhost/login/  -> 200, sem rodar nada
+journalctl -u estoque-watchdog.service --since today          # histórico do vigia
+```
+
+No Nutanix, ligue também o **HA** do cluster para a VM: se o host físico cair,
+a VM liga em outro host e as camadas acima sobem o sistema.
+
+---
+
+## 7. Backup diário
 
 ```bash
 sudo mkdir -p /opt/estoque-backups && sudo chown $USER /opt/estoque-backups
@@ -138,7 +172,7 @@ substitui o dump).
 
 ---
 
-## 7. Atualizar a versão
+## 8. Atualizar a versão
 
 ```bash
 cd /opt/estoque
@@ -146,87 +180,6 @@ docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"'
 git pull
 docker compose up -d --build      # o serviço migrate roda as migrations novas
 ```
-
-## 8. Redundância: app também no Kubernetes (NKP), mesmo banco
-
-```
-                 estoque.clearit.com.br
-                          │
-        (balanceador c/ health check ou troca de DNS)
-              ┌───────────┴────────────┐
-        VM Nutanix (app)        Kubernetes NKP (app ×2)
-              │                        │
-              └──────► Postgres ◄──────┘
-                 (na VM — banco único)
-```
-
-- **Um banco só** (o da VM). Nunca suba um Postgres separado no cluster para
-  "redundância": os dados divergiriam.
-- **Migrations só na VM** (`docker compose up`). No cluster, o initContainer
-  `wait-migrations` segura os pods até o banco estar na versão da imagem.
-- **Mesma `DJANGO_SECRET_KEY`** na VM e no cluster (login vale nos dois lados).
-- O banco continua sendo ponto único → backup diário (seção 6) + HA do Nutanix.
-
-### 8.1 Publicar o Postgres da VM só para o cluster
-No `.env` da VM:
-```
-DB_PUBLISH=0.0.0.0:5432
-```
-```bash
-docker compose up -d db
-```
-O Docker **ignora o ufw** nas portas publicadas. Restrinja na chain `DOCKER-USER`
-(troque pelo CIDR dos nós do Kubernetes — `kubectl get nodes -o wide`):
-```bash
-sudo iptables -I DOCKER-USER -p tcp -m conntrack --ctorigdstport 5432 ! -s <CIDR_NOS_K8S> -j DROP
-sudo apt install -y iptables-persistent && sudo netfilter-persistent save
-```
-Teste de um nó/pod do cluster: `nc -zv <IP_DA_VM> 5432` (deve conectar) e de
-outra máquina fora do CIDR (deve falhar).
-
-### 8.2 Imagem no registry (mesma versão da VM)
-Na VM, no mesmo commit que está rodando:
-```bash
-docker build -t kaikeclear/estoque-app:v5 . && docker push kaikeclear/estoque-app:v5
-```
-A tag usada pelo cluster fica em `nginx/kustomization.yaml` (`images: newTag`).
-
-### 8.3 Secret e configuração no cluster
-```bash
-kubectl -n lab-tjce-bqzsv create secret generic supply-secrets \
-  --from-literal=DJANGO_SECRET_KEY='<MESMA chave do .env da VM>' \
-  --from-literal=DATABASE_USER='<mesmo DATABASE_USER do .env>' \
-  --from-literal=DATABASE_PASSWORD='<mesma DATABASE_PASSWORD do .env>'
-```
-- `k8s/db-externo/kustomization.yaml`: `DATABASE_HOST` = IP da VM.
-- `nginx/supply-config.yaml`: em `DJANGO_ALLOWED_HOSTS`/`DJANGO_CSRF_TRUSTED_ORIGINS`
-  inclua o IP que o MetalLB der ao Service (se for acessar por IP).
-
-### 8.4 Aplicar (variante banco externo)
-```bash
-kubectl kustomize k8s/db-externo | less          # revisar: sem Postgres/PVC
-kubectl apply -k k8s/db-externo
-kubectl -n lab-tjce-bqzsv rollout status deploy/supply-app
-kubectl -n lab-tjce-bqzsv get svc supply-app-service   # EXTERNAL-IP do app no cluster
-curl -I -H 'Host: estoque.clearit.com.br' http://<EXTERNAL-IP>/login/   # 200
-```
-**Não** aplique `nginx/migrate-job.yaml` neste modo (a VM já migra).
-
-### 8.5 Failover na frente
-- **Recomendado:** VIP no FortiGate/F5 com health check `GET /login/` (200) e dois
-  membros: `<IP_DA_VM>:80` e `<EXTERNAL-IP>:80`; o DNS aponta para o VIP.
-- **Simples (manual):** DNS aponta para a VM; se ela cair, troque o registro para o
-  `EXTERNAL-IP` do cluster (use TTL baixo, ex.: 60 s).
-
-### 8.6 Atualizar com os dois no ar
-1. Backup (seção 6).
-2. **VM primeiro:** `git pull && docker compose up -d --build` (aplica migrations).
-3. `docker build/push` da nova tag, atualizar `newTag` e `kubectl apply -k k8s/db-externo`.
-
-Os pods novos do cluster só ficam prontos depois que a VM migrou o banco.
-Atenção: entre os passos 2 e 3 os pods **antigos** do cluster rodam código antigo
-contra o banco novo — se a versão remover/renomear colunas, tire o cluster do
-balanceador (ou `kubectl scale deploy/supply-app --replicas=0`) durante a janela.
 
 ## Problemas comuns
 
