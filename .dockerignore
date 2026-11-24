@@ -47,3 +47,6 @@ docker-compose*.yml
 Dockerfile*
 .dockerignore
 *.md
+
+# Manifests Kubernetes (variantes)
+k8s/
