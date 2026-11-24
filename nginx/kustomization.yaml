@@ -1,11 +1,28 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+
+# Namespace aplicado a todos os recursos (não repetir nos manifests).
+namespace: lab-tjce-bqzsv
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: estoque-clearit
+    includeSelectors: false   # selectors de Deployment são imutáveis
+
+# O Secret "supply-secrets" NÃO faz parte do kustomization: é criado fora do
+# Git (kubectl create secret ...). Ver supply-secrets.example.yaml.
+# O Job de migrate (migrate-job.yaml) também fica fora: Jobs são imutáveis e
+# devem ser recriados a cada deploy.
 resources:
   - postgres-pvc.yaml
   - postgres-deployment.yaml
-  - supply-config.yaml      
-  - supply-secrets.yaml      
-  - supply-app-service.yaml
+  - supply-config.yaml
   - supply-app-deployment.yaml
+  - supply-app-service.yaml
   - network.yaml
-  - nginx-configmap.yaml
+  - network-policy.yaml
+
+# Troque a tag aqui a cada release (e no migrate-job.yaml).
+images:
+  - name: kaikeclear/estoque-app
+    newTag: v5

@@ -2,9 +2,16 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: supply-app
-  namespace: lab-tjce-bqzsv
+  labels:
+    app: supply-app
 spec:
   replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: supply-app
@@ -12,34 +19,137 @@ spec:
     metadata:
       labels:
         app: supply-app
+        estoque/db-client: "true"
     spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 40
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        # Não aplica migrations (isso é feito pelo Job supply-migrate). Apenas
+        # impede que um pod novo suba com o schema desatualizado: falha (e é
+        # reexecutado) enquanto houver migrations pendentes.
+        - name: wait-migrations
+          image: kaikeclear/estoque-app:v5
+          imagePullPolicy: IfNotPresent
+          command: ["/app_root/app/entrypoint.sh"]
+          args: ["python", "manage.py", "migrate", "--check", "--noinput"]
+          envFrom:
+            - configMapRef:
+                name: supply-config
+          env:
+            - name: DJANGO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: supply-secrets
+                  key: DJANGO_SECRET_KEY
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: supply-secrets
+                  key: DATABASE_USER
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: supply-secrets
+                  key: DATABASE_PASSWORD
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
       containers:
-      # 1. O Contêiner do Django (Python)
-      - name: web
-        image: kaikeclear/estoque-app:v3 # <-- TROQUEI PARA A IMAGEM QUE VOCÊ ACABOU DE CRIAR!
-        
-        # Se você já tiver criado esses arquivos no K8s, ótimo. Se não, eles vão dar erro (leia abaixo).
-        envFrom:
-        - configMapRef:
-            name: supply-config
-        - secretRef:
-            name: supply-secrets
-          
-        ports:
-        - containerPort: 8000
-        volumeMounts:
-        - name: static-data
-          mountPath: /app/static
-
-      # 2. O Contêiner do Nginx (Reverse Proxy) - Mantém exatamente igual!
-      - name: nginx
-        image: kaikeclear/supply-nginx:v1 
-        ports:
-        - containerPort: 80
-        volumeMounts:
-        - name: static-data
-          mountPath: /app/static
-
+        - name: web
+          image: kaikeclear/estoque-app:v5
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: supply-config
+          env:
+            - name: DJANGO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: supply-secrets
+                  key: DJANGO_SECRET_KEY
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: supply-secrets
+                  key: DATABASE_USER
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: supply-secrets
+                  key: DATABASE_PASSWORD
+          ports:
+            - name: http
+              containerPort: 8000
+          startupProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            failureThreshold: 24
+          # /login/ responde 200 sem autenticação e não consulta o banco.
+          # Host/X-Forwarded-Proto enviados para passar no ALLOWED_HOSTS e
+          # não cair em redirect https.
+          readinessProbe:
+            httpGet:
+              path: /login/
+              port: http
+              httpHeaders:
+                - name: Host
+                  value: estoque.clearit.com.br
+                - name: X-Forwarded-Proto
+                  value: https
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # Liveness só por TCP: não reinicia o app se o banco cair.
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 384Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
       volumes:
-      - name: static-data
-        emptyDir: {}
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: supply-app
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: supply-app

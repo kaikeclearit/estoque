@@ -1,0 +1,57 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Excluir produto{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <nav aria-label="Trilha de navegação">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'product_list' %}">Produtos</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Excluir</li>
+            </ol>
+        </nav>
+        <h1>Excluir produto?</h1>
+    </div>
+</div>
+
+<div class="card form-panel">
+    <div class="card-body">
+        <dl class="detail-list mb-3">
+            <dt>Produto</dt><dd>{{ product.name }}</dd>
+            <dt>Fabricante</dt><dd>{{ product.manufacturer|default:"—" }}</dd>
+            <dt>Modelo</dt><dd>{{ product.model|default:"—" }}</dd>
+            {% if product.product_id %}<dt>ID</dt><dd>{{ product.product_id }}</dd>{% endif %}
+        </dl>
+
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle" aria-hidden="true"></i>
+            <div class="alert-body">
+                O produto sai das listas, dos formulários e do painel de alertas.
+                O histórico é mantido: {{ outputs_count }} saída{{ outputs_count|pluralize }} e {{ entries_count }} entrada{{ entries_count|pluralize }}
+                continuam visíveis com a marcação <span class="tag ms-0">Produto excluído</span>.
+            </div>
+        </div>
+
+        {% if stocks %}
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+            <div class="alert-body">
+                <strong>Este produto ainda tem saldo:</strong>
+                {% for s in stocks %}<span class="tabular">{{ s.location_id }} {{ s.quantity }}</span>{% if not forloop.last %} · {% endif %}{% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-actions">
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-trash me-1" aria-hidden="true"></i>Excluir produto
+                </button>
+                <a href="{% url 'product_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

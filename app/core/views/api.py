@@ -6,7 +6,7 @@ from core.models import ProductStock
 def product_stock_api(request):
     """API para retornar quantidade disponível"""
     product_id = request.GET.get('product')
-    location_id = request.GET.get('location')
+    location = request.GET.get('location')
     
     if not product_id:
         return JsonResponse({'error': 'Product ID required'}, status=400)
@@ -14,16 +14,20 @@ def product_stock_api(request):
     try:
         query = ProductStock.objects.filter(product_id=product_id)
         
-        if location_id:
-            query = query.filter(location_id=location_id)
-        
-        stock = query.first()
-        
+        if location:
+            query = query.filter(location=location)
+            stock = query.first()
+            quantity = stock.quantity if stock else None
+        else:
+            # Sem localidade: soma de todas
+            stock = query.first()
+            quantity = sum(query.values_list('quantity', flat=True)) if stock else None
+
         if stock:
             return JsonResponse({
-                'quantity': stock.quantity,
+                'quantity': quantity,
                 'product': stock.product.name,
-                'location': stock.location.name if location_id else 'Todas'
+                'location': stock.location.name if location else 'Todas'
             })
         else:
             return JsonResponse({

@@ -1,31 +1,62 @@
 {% extends 'core/base.html' %}
 
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card shadow">
-            <div class="card-header bg-white">
-                <h4 class="mb-0">{{ title }}</h4>
-            </div>
-            <div class="card-body">
-                <form method="post">
-                    {% csrf_token %} {% for field in form %}
-                    <div class="mb-3">
-                        <label class="form-label">{{ field.label }}</label>
-                        {{ field }}
-                        {% if field.errors %}
-                            <div class="text-danger small">{{ field.errors }}</div>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
+{% block title %}{{ title }}{% endblock %}
 
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary">Salvar</button>
-                        <a href="{% url 'product_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+{% block content %}
+<div class="page-header">
+    <div>
+        <nav aria-label="Trilha de navegação">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'product_list' %}">Produtos</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ title }}</li>
+            </ol>
+        </nav>
+        <h1>{{ title }}</h1>
+    </div>
+</div>
+
+<div class="card form-panel">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger" role="alert"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><div class="alert-body">{{ form.non_field_errors }}</div></div>
+            {% endif %}
+
+            <fieldset class="form-section">
+                <legend>Dados do produto</legend>
+                <div class="row g-3">
+                    {% for field in form %}{% if field.name|slice:":4" != "min_" %}
+                    <div class="{% if field.name == 'name' %}col-12{% else %}col-md-6{% endif %}">
+                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %}<span class="required-mark" aria-hidden="true">*</span>{% endif %}</label>
+                        {{ field }}
+                        {% if field.help_text %}<div class="form-text" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</div>{% endif %}
+                        {% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}
                     </div>
-                </form>
+                    {% endif %}{% endfor %}
+                </div>
+            </fieldset>
+
+            <fieldset class="form-section">
+                <legend>Estoque mínimo por localidade</legend>
+                <p class="form-text mt-n2 mb-3">Com saldo igual ou abaixo do mínimo, o item aparece como crítico no painel. Use 0 para não controlar.</p>
+                <div class="row g-3">
+                    {% for field in form %}{% if field.name|slice:":4" == "min_" %}
+                    <div class="col-sm-6 col-md-4">
+                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label|cut:"Estoque mínimo — " }}</label>
+                        {{ field }}
+                        {% if field.help_text %}<div class="visually-hidden" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</div>{% endif %}
+                        {% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}
+                    </div>
+                    {% endif %}{% endfor %}
+                </div>
+            </fieldset>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Salvar</button>
+                <a href="{% url 'product_list' %}" class="btn btn-outline-secondary">Cancelar</a>
             </div>
-        </div>
+        </form>
     </div>
 </div>
 {% endblock %}

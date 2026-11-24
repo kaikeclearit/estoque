@@ -1,0 +1,29 @@
+{% comment %}
+Campos de um formulário Django no padrão visual do sistema.
+Uso: {% include 'core/_form_fields.html' with form=form %}
+- label associado (for/id), marca de obrigatório, texto de ajuda e erros.
+- O Django 5.2 já liga help_text (id "<campo>_helptext") e erros ao campo via aria-describedby/aria-invalid.
+{% endcomment %}
+{% if form.non_field_errors %}
+<div class="alert alert-danger" role="alert">
+    <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+    <div class="alert-body">{{ form.non_field_errors }}</div>
+</div>
+{% endif %}
+{% for field in form.hidden_fields %}{{ field }}{% endfor %}
+{% for field in form.visible_fields %}
+<div class="mb-3{% if field.field.widget.input_type == 'checkbox' %} form-check{% endif %}">
+    {% if field.field.widget.input_type == 'checkbox' %}
+        {{ field }}
+        <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {% else %}
+        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required and not field.field.disabled %}<span class="required-mark" aria-hidden="true">*</span>{% endif %}</label>
+        {{ field }}
+    {% endif %}
+    {% if field.help_text %}<div class="form-text" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</div>{% endif %}
+    {% if field.errors %}<div class="field-error">{{ field.errors }}</div>{% endif %}
+    {% if field.name == 'client' %}
+    <div class="form-text">Não encontrou? <a href="{% url 'client_create' %}">Cadastrar cliente</a>.</div>
+    {% endif %}
+</div>
+{% endfor %}

@@ -1,0 +1,20 @@
+# Postgres aceita conexões somente dos pods do app e do Job de migrate.
+# (Só tem efeito se o CNI do cluster aplicar NetworkPolicy.)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-allow-app-only
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              estoque/db-client: "true"
+      ports:
+        - protocol: TCP
+          port: 5432

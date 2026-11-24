@@ -1,38 +1,69 @@
-version: '3.8'
+# Execução de produção em uma única VM (ex.: VM no Nutanix em 10.11.10.10).
+# Mesma imagem do Kubernetes: Gunicorn + WhiteNoise (estáticos servidos pelo
+# próprio app, sem nginx). Variáveis em .env (NÃO versionado) — copie de
+# env.vm.example. Passo a passo: documentation/docs/DEPLOY-VM.md
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
 
 services:
   web:
-    build: .
-    command: gunicorn setup.wsgi:application --bind 0.0.0.0:8000
-    volumes:
-      - ./app:/app            # Hot-reload (opcional em prod, útil em dev)
-      - static_volume:/app/static  # Compartilha estáticos com o Nginx
-      - media_volume:/app/media    # Compartilha uploads com o Nginx
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: kaikeclear/estoque-app:local
     env_file:
       - .env
+    environment:
+      DATABASE_HOST: db
+      DATABASE_PORT: "5432"
+      DEBUG: "false"
+    ports:
+      - "${APP_PORT:-80}:8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    logging: *default-logging
+
+  # Executa as migrations uma vez antes de subir o web.
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: kaikeclear/estoque-app:local
+    env_file:
+      - .env
+    environment:
+      DATABASE_HOST: db
+      DATABASE_PORT: "5432"
+      DEBUG: "false"
+    command: ["python", "manage.py", "migrate", "--noinput"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    logging: *default-logging
 
   db:
-    image: postgres:15
+    image: postgres:15.20-trixie
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:?defina DATABASE_NAME no .env}
+      POSTGRES_USER: ${DATABASE_USER:?defina DATABASE_USER no .env}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?defina DATABASE_PASSWORD no .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-
-  nginx:
-    build: ./nginx
-    volumes:
-      - static_volume:/app/static  # Nginx lê daqui
-      - media_volume:/app/media    # Nginx lê daqui
-    ports:
-      - "80:80"
-    depends_on:
-      - web
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    logging: *default-logging
 
 volumes:
   postgres_data:
-  static_volume:
-  media_volume:

@@ -1,60 +1,42 @@
-<div class="modal-header bg-light">
-    <h5 class="modal-title">
-        <i class="bi bi-building"></i> Histórico: <strong>{{ client.name }}</strong>
-    </h5>
-    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<div class="modal-header">
+    <h2 class="modal-title" id="modalClienteTitulo">
+        Material entregue
+        <span class="modal-subtitle">{{ client.name }}</span>
+    </h2>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
 </div>
 
 <div class="modal-body p-0">
     <div class="table-responsive">
-        <table class="table table-striped table-hover mb-0 align-middle">
-            <thead class="small text-muted">
+        <table class="table table-hover align-middle">
+            <thead>
                 <tr>
-                    <th>Data</th>
-                    <th>Produto</th>
-                    <th class="text-center">Qtd.</th>
-                    <th>Quem Entregou</th> <th>Obs/Detalhes</th> </tr>
+                    <th scope="col">Data</th>
+                    <th scope="col">Produto</th>
+                    <th scope="col" class="num">Qtd.</th>
+                    <th scope="col">Entregue por</th>
+                    <th scope="col">Observação</th>
+                </tr>
             </thead>
             <tbody>
                 {% for out in history %}
-                <tr>
-                    <td class="small text-nowrap">{{ out.created_at|date:"d/m/y H:i" }}</td>
-                    
-                    <td class="fw-bold text-dark">
-                        {{ out.product.name }}
-                        <div class="small text-muted fw-normal">{{ out.product.model|default:"" }}</div>
-                    </td>
-
-                    <td class="text-center">
-                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">
-                            -{{ out.quantity }}
-                        </span>
-                    </td>
-
+                <tr {% if out.is_cancelled %}class="row-muted"{% endif %}>
+                    <td class="cell-date">{{ out.created_at|date:"d/m/Y H:i" }}</td>
                     <td>
-                        <div class="d-flex align-items-center">
-                            <i class="bi bi-person-circle text-secondary me-2"></i>
-                            <span class="small">{{ out.employee.first_name|default:out.employee.username }}</span>
-                        </div>
+                        <span class="cell-title">{{ out.product.name }}</span>
+                        {% if out.product.model %}<span class="cell-sub">{{ out.product.model }}</span>{% endif %}
                     </td>
-
-                    <td>
+                    <td class="num qty-out">−{{ out.quantity }}{% if out.is_cancelled %}<span class="d-block small text-muted">revertida</span>{% endif %}</td>
+                    <td>{{ out.employee.first_name|default:out.employee.username }}</td>
+                    <td class="text-muted">
                         {% if out.observation %}
-                            <small class="text-muted fst-italic">"{{ out.observation|truncatechars:30 }}"</small>
-                            {% if out.observation|length > 30 %}
-                            <i class="bi bi-info-circle" title="{{ out.observation }}" style="cursor: help;"></i>
-                            {% endif %}
-                        {% else %}
-                            <span class="text-muted small">-</span>
-                        {% endif %}
+                            <span title="{{ out.observation }}">{{ out.observation|truncatechars:40 }}</span>
+                        {% else %}—{% endif %}
                     </td>
                 </tr>
                 {% empty %}
-                <tr>
-                    <td colspan="5" class="text-center py-5 text-muted">
-                        <i class="bi bi-box-seam display-6 d-block mb-3 opacity-50"></i>
-                        Nenhum equipamento/produto entregue para este cliente ainda.
-                    </td>
+                <tr class="empty-row">
+                    <td colspan="5">Nenhum material entregue para este cliente.</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -63,5 +45,5 @@
 </div>
 
 <div class="modal-footer">
-    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
 </div>

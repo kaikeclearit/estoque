@@ -1,128 +1,137 @@
 {% extends 'core/base.html' %}
 
+{% block title %}Painel{% endblock %}
+
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12">
-        <h2 class="fw-light">Painel de Controle</h2>
-        <p class="text-muted">Bem-vindo ao sistema de gestão ClearIT.</p>
+<div class="page-header">
+    <div>
+        <h1>Painel</h1>
+        <p class="page-meta">Situação do estoque por localidade</p>
+    </div>
+    <div class="page-actions">
+        {% if perms.core.add_stockentry %}
+            <a href="{% url 'entry_create' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i>Registrar entrada
+            </a>
+        {% endif %}
+        {% if perms.core.add_stockout %}
+            <a href="{% url 'output_create' %}" class="btn btn-primary">
+                <i class="bi bi-box-arrow-up me-1" aria-hidden="true"></i>Nova saída
+            </a>
+        {% endif %}
     </div>
 </div>
 
-<div class="row g-4">
-
-    <div class="col-md-6">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-header bg-white border-0 py-3">
-                <h5 class="mb-0 text-primary"><i class="bi bi-database"></i> Cadastros</h5>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    
-                    <div class="col-12">
-                        <a href="{% url 'product_list' %}" class="text-decoration-none">
-                            <div class="p-3 border rounded d-flex align-items-center hover-shadow transition">
-                                <div class="bg-primary bg-opacity-10 p-3 rounded text-primary me-3">
-                                    <i class="bi bi-box-seam fs-4"></i>
-                                </div>
-                                <div>
-                                    <h5 class="mb-1 text-dark">Produtos</h5>
-                                    <small class="text-muted">Gerenciar catálogo e estoque.</small>
-                                </div>
-                                <i class="bi bi-chevron-right ms-auto text-muted"></i>
-                            </div>
-                        </a>
-                    </div>
-
-                    <div class="col-12">
-                        <a href="{% url 'client_list' %}" class="text-decoration-none">
-                            <div class="p-3 border rounded d-flex align-items-center hover-shadow transition">
-                                <div class="bg-info bg-opacity-10 p-3 rounded text-info me-3">
-                                    <i class="bi bi-people fs-4"></i>
-                                </div>
-                                <div>
-                                    <h5 class="mb-1 text-dark">Clientes</h5>
-                                    <small class="text-muted">Gerenciar base de clientes.</small>
-                                </div>
-                                <i class="bi bi-chevron-right ms-auto text-muted"></i>
-                            </div>
-                        </a>
-                    </div>
-
+<!-- Resumo por localidade -->
+<section aria-labelledby="resumo-titulo" class="mb-4">
+    <h2 id="resumo-titulo" class="visually-hidden">Resumo por localidade</h2>
+    <div class="row g-3">
+        {% for loc in location_summary %}
+        <div class="col-md-6 col-xl-4">
+            <a href="?local={{ loc.code }}#alertas" class="loc-card" {% if location_filter == loc.code %}aria-current="true"{% endif %}>
+                <div class="loc-card-head">
+                    <span class="loc-code">{{ loc.code }}</span>
+                    <span class="loc-name">{{ loc.name }}</span>
+                    <span class="loc-total">{{ loc.total }} {{ loc.total|pluralize:"item,itens" }}</span>
                 </div>
-            </div>
+                <dl class="loc-counts">
+                    <div>
+                        <dt><span class="dot dot-danger" aria-hidden="true"></span>Em falta</dt>
+                        <dd {% if not loc.FALTA %}class="is-zero"{% endif %}>{{ loc.FALTA }}</dd>
+                    </div>
+                    <div>
+                        <dt><span class="dot dot-warning" aria-hidden="true"></span>Crítico</dt>
+                        <dd {% if not loc.CRITICO %}class="is-zero"{% endif %}>{{ loc.CRITICO }}</dd>
+                    </div>
+                    <div>
+                        <dt><span class="dot dot-info" aria-hidden="true"></span>Atenção</dt>
+                        <dd {% if not loc.ATENCAO %}class="is-zero"{% endif %}>{{ loc.ATENCAO }}</dd>
+                    </div>
+                </dl>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- Alertas -->
+<section class="card mb-4" id="alertas" aria-labelledby="alertas-titulo">
+    <div class="card-header">
+        <h2 id="alertas-titulo" class="section-title">Alertas de estoque</h2>
+        <button class="btn btn-link btn-sm p-0" type="button"
+                data-bs-toggle="collapse" data-bs-target="#alertRules"
+                aria-expanded="false" aria-controls="alertRules">
+            <i class="bi bi-info-circle me-1" aria-hidden="true"></i>Como é calculado
+        </button>
+    </div>
+
+    <div class="collapse" id="alertRules">
+        <div class="note m-3 mb-0">
+            <ul>
+                <li><span class="dot dot-danger me-1" aria-hidden="true"></span><strong>Em falta:</strong> saldo zerado.</li>
+                <li><span class="dot dot-warning me-1" aria-hidden="true"></span><strong>Crítico:</strong> saldo igual ou abaixo do estoque mínimo, ou dura {{ rules.critical_days }} dias ou menos no ritmo atual de consumo.</li>
+                <li><span class="dot dot-info me-1" aria-hidden="true"></span><strong>Atenção:</strong> saldo até {{ rules.warning_factor }}× o mínimo, ou dura {{ rules.warning_days }} dias ou menos.</li>
+                <li><strong>Consumo:</strong> média das saídas (não canceladas) dos últimos {{ rules.window }} dias.</li>
+                <li><strong>Sugestão de compra:</strong> quantidade para chegar ao maior valor entre 2× o mínimo e {{ rules.target_days }} dias de consumo.</li>
+                <li>O estoque mínimo é definido por localidade na edição de cada produto.</li>
+            </ul>
         </div>
     </div>
 
-    <div class="col-md-6">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-header bg-white border-0 py-3">
-                <h5 class="mb-0 text-success"><i class="bi bi-arrow-left-right"></i> Movimentações</h5>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-
-                    <div class="col-md-6">
-                        {% if perms.core.add_stockentry %}
-                            <a href="{% url 'entry_create' %}" class="text-decoration-none">
-                                <div class="card h-100 border-success border-opacity-25 bg-success bg-opacity-10 text-center p-4 hover-zoom transition">
-                                    <i class="bi bi-box-arrow-in-down fs-1 text-success mb-2"></i>
-                                    <h5 class="text-success fw-bold">Entrada</h5>
-                                    <small class="text-muted">Adicionar itens</small>
-                                </div>
-                            </a>
-                        {% else %}
-                            <div class="card h-100 border-secondary border-opacity-10 bg-light text-center p-4" 
-                                 style="cursor: not-allowed; opacity: 0.6;"
-                                 data-bs-toggle="tooltip" 
-                                 title="Apenas gestores podem realizar entradas">
-                                <i class="bi bi-lock-fill fs-1 text-secondary mb-2"></i>
-                                <h5 class="text-secondary fw-bold">Entrada</h5>
-                                <small class="text-muted">Acesso restrito</small>
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <div class="col-md-6">
-                        {% if perms.core.add_stockout %}
-                            <a href="{% url 'output_create' %}" class="text-decoration-none">
-                                <div class="card h-100 border-danger border-opacity-25 bg-danger bg-opacity-10 text-center p-4 hover-zoom transition">
-                                    <i class="bi bi-box-arrow-up fs-1 text-danger mb-2"></i>
-                                    <h5 class="text-danger fw-bold">Saída</h5>
-                                    <small class="text-muted">Baixar itens</small>
-                                </div>
-                            </a>
-                        {% else %}
-                            <div class="card h-100 border-secondary border-opacity-10 bg-light text-center p-4" 
-                                 style="cursor: not-allowed; opacity: 0.6;"
-                                 data-bs-toggle="tooltip" 
-                                 title="Apenas gestores podem realizar saídas">
-                                <i class="bi bi-lock-fill fs-1 text-secondary mb-2"></i>
-                                <h5 class="text-secondary fw-bold">Saída</h5>
-                                <small class="text-muted">Acesso restrito</small>
-                            </div>
-                        {% endif %}
-                    </div>
-
-                    <div class="col-12 mt-3">
-                        <a href="{% url 'movements_list' %}" class="btn btn-outline-secondary w-100 transition">
-                            <i class="bi bi-clock-history"></i> Ver Histórico Completo de Movimentações
-                        </a>
-                    </div>
-
-                </div>
-            </div>
-        </div>
+    <div class="panel-toolbar">
+        <nav aria-label="Filtrar alertas por localidade">
+            <ul class="filter-tabs">
+                <li><a href="?#alertas" {% if not location_filter %}class="active" aria-current="page"{% endif %}>Todas</a></li>
+                {% for code, name in location_choices %}
+                <li><a href="?local={{ code }}#alertas" title="{{ name }}" {% if location_filter == code %}class="active" aria-current="page"{% endif %}>{{ code }}</a></li>
+                {% endfor %}
+            </ul>
+        </nav>
     </div>
 
-</div>
-
-<style>
-    .transition { transition: all 0.3s ease; }
-    .hover-shadow:hover { box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; transform: translateY(-2px); }
-    /* Só aplica o zoom em elementos que não estão bloqueados */
-    a .hover-zoom:hover { transform: scale(1.03); } 
-    /* Cores específicas para o hover */
-    a .bg-success.bg-opacity-10:hover { background-color: rgba(var(--bs-success-rgb), 0.2) !important; }
-    a .bg-danger.bg-opacity-10:hover { background-color: rgba(var(--bs-danger-rgb), 0.2) !important; }
-</style>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th scope="col">Status</th>
+                    <th scope="col">Produto</th>
+                    <th scope="col">Local</th>
+                    <th scope="col" class="num">Saldo</th>
+                    <th scope="col" class="num">Mínimo</th>
+                    <th scope="col" class="num">Consumo/mês</th>
+                    <th scope="col" class="num">Cobertura (dias)</th>
+                    <th scope="col" class="num">Sugestão de compra</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in alerts %}
+                <tr>
+                    <td><span class="status status-{{ a.meta.color }}">{{ a.meta.label }}</span></td>
+                    <td>
+                        <span class="cell-title">{{ a.product.name }}</span>
+                        {% if a.product.model %}<span class="cell-sub">{{ a.product.model }}</span>{% endif %}
+                    </td>
+                    <td class="cell-code" title="{{ a.stock.location.name }}">{{ a.stock.location }}</td>
+                    <td class="num {% if a.stock.quantity == 0 %}qty-zero{% else %}fw-semibold{% endif %}">{{ a.stock.quantity }}</td>
+                    <td class="num text-muted">{{ a.stock.minimum_quantity|default:"—" }}</td>
+                    <td class="num">{{ a.monthly_consumption|default:"—" }}</td>
+                    <td class="num">
+                        {% if a.stock.quantity == 0 %}<span class="qty-zero">0</span>
+                        {% elif a.coverage_days is None %}<span class="text-muted" title="Sem consumo nos últimos {{ rules.window }} dias">—</span>
+                        {% else %}{{ a.coverage_days }}{% endif %}
+                    </td>
+                    <td class="num">
+                        {% if a.suggested_purchase %}<strong>{{ a.suggested_purchase }}</strong> <span class="text-muted">un.</span>{% else %}<span class="text-muted">—</span>{% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr class="empty-row">
+                    <td colspan="8">Nenhum produto em falta ou em alerta{% if location_filter %} em {{ location_filter }}{% endif %}.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% include 'core/_pagination.html' with page=alerts param='page' anchor='#alertas' %}
+</section>
 {% endblock %}

@@ -1,154 +1,73 @@
 {% extends 'core/base.html' %}
 
+{% block title %}Histórico de saídas{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2><i class="bi bi-clock-history"></i> Histórico de Saídas</h2>
-    <a href="{% url 'output_create' %}" class="btn btn-danger">
-        <i class="bi bi-box-arrow-up"></i> Nova Saída
-    </a>
+<div class="page-header">
+    <div>
+        <nav aria-label="Trilha de navegação">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'movements_list' %}">Histórico</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Saídas</li>
+            </ol>
+        </nav>
+        <h1>Histórico de saídas</h1>
+    </div>
+    <div class="page-actions">
+        {% if perms.core.add_stockout %}
+        <a href="{% url 'output_create' %}" class="btn btn-primary">
+            <i class="bi bi-box-arrow-up me-1" aria-hidden="true"></i>Nova saída
+        </a>
+        {% endif %}
+    </div>
 </div>
 
-<div class="card shadow-sm">
-    <div class="card-body p-0">
-        <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
                 <tr>
-                    <th>Data</th>
-                    <th class="text-center">Tipo</th> <th>Produto</th>
-                    <th class="text-center">Origem</th>
-                    <th class="text-center">Qtd.</th>
-                    <th>Destino</th>
-                    <th>Resp.</th>
-                    <th>Obs.</th>
+                    <th scope="col">Data</th>
+                    <th scope="col">Tipo</th>
+                    <th scope="col">Produto</th>
+                    <th scope="col">Origem</th>
+                    <th scope="col" class="num">Qtd.</th>
+                    <th scope="col">Destino</th>
+                    <th scope="col">Responsável</th>
+                    <th scope="col">Observação</th>
                 </tr>
             </thead>
             <tbody>
                 {% for out in outputs %}
-                <tr>
-                    <td class="text-muted small">{{ out.created_at|date:"d/m/Y H:i" }}</td>
-
-                    <td class="text-center">
-                        {% if out.movement_type == 'RESERVA' %}
-                            <span class="badge bg-warning text-dark border border-warning">
-                                <i class="bi bi-clock"></i> Reserva
-                            </span>
-                            {% if out.scheduled_date %}
-                                <div class="small text-muted mt-1" style="font-size: 0.75rem;">
-                                    Até {{ out.scheduled_date|date:"d/m" }}
-                                </div>
-                            {% endif %}
-                        
-                        {% elif out.movement_type == 'DESCARTE' %}
-                            <span class="badge bg-dark">
-                                <i class="bi bi-trash"></i> Descarte
-                            </span>
-                        
+                <tr {% if out.is_cancelled %}class="row-muted"{% endif %}>
+                    <td class="cell-date">{{ out.created_at|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        {% if out.movement_type == 'DESCARTE' %}
+                            Descarte
                         {% elif out.movement_type == 'EMPRESTIMO' %}
-                            <span class="badge bg-info text-dark">
-                                <i class="bi bi-arrow-left-right"></i> Empréstimo
-                            </span>
-
+                            Empréstimo
+                            {% if out.scheduled_date %}<span class="cell-sub">Devolução até {{ out.scheduled_date|date:"d/m/Y" }}</span>{% endif %}
                         {% else %}
-                            <span class="badge bg-secondary bg-opacity-25 text-secondary border">
-                                <i class="bi bi-check-lg"></i> Baixa
-                            </span>
+                            {{ out.get_movement_type_display|default:"Baixa" }}
                         {% endif %}
                     </td>
-
-                    <td class="fw-bold">{{ out.product.name }}</td>
-
-                    <td class="text-center">
-                        {% if out.location == 'SP' %}
-                            <span class="badge bg-primary bg-opacity-10 text-primary">SP</span>
-                        {% else %}
-                            <span class="badge bg-success bg-opacity-10 text-success">MAO</span>
-                        {% endif %}
+                    <td>
+                        <span class="cell-title">{{ out.product.name }}</span>
+                        {% if out.order_id %}<a href="{% url 'order_detail' out.order_id %}" class="tag">Pedido #{{ out.order_id }}</a>{% endif %}
+                        {% if out.product.is_deleted %}<span class="tag" title="Produto excluído em {{ out.product.deleted_at|date:'d/m/Y' }}">Produto excluído</span>{% endif %}
                     </td>
-
-                    <td class="text-center fw-bold text-danger">-{{ out.quantity }}</td>
-
+                    <td class="cell-code" title="{{ out.location.name }}">{{ out.location_id }}</td>
+                    <td class="num qty-out">−{{ out.quantity }}</td>
                     <td>{{ out.client.name }}</td>
-
-                    <td class="small">
-                        {{ out.employee.first_name|default:out.employee.username }}
-                    </td>
-
-                    <td class="small text-muted text-truncate" style="max-width: 150px;">
-                        {{ out.observation|default:"-" }}
-                    </td>
+                    <td>{{ out.employee.first_name|default:out.employee.username }}</td>
+                    <td class="text-muted text-truncate" style="max-width: 12rem;" {% if out.observation %}title="{{ out.observation }}"{% endif %}>{{ out.observation|default:"—" }}</td>
                 </tr>
                 {% empty %}
-                <tr>
-                    <td colspan="8" class="text-center py-5 text-muted">
-                        Nenhuma saída registrada.
-                    </td>
-                </tr>
+                <tr class="empty-row"><td colspan="8">Nenhuma saída registrada.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+    {% include 'core/_pagination.html' with page=page_obj param='page' %}
 </div>
-{% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const productSelect = document.getElementById('id_product');
-    const quantityInput = document.getElementById('id_quantity');
-    const locationSelect = document.getElementById('id_location');
-    
-    if (!productSelect || !quantityInput) return;
-    
-    // Criar div para mostrar quantidade disponível
-    const availabilityDiv = document.createElement('div');
-    availabilityDiv.id = 'product-availability';
-    availabilityDiv.className = 'alert alert-info mt-2';
-    availabilityDiv.style.display = 'none';
-    
-    quantityInput.parentElement.appendChild(availabilityDiv);
-    
-    // Função para buscar quantidade disponível
-    async function updateAvailability() {
-        const productId = productSelect.value;
-        const locationId = locationSelect ? locationSelect.value : '';
-        
-        if (!productId) {
-            availabilityDiv.style.display = 'none';
-            return;
-        }
-        
-        try {
-            const url = `/api/product-stock/?product=${productId}${locationId ? `&location=${locationId}` : ''}`;
-            const response = await fetch(url);
-            const data = await response.json();
-            
-            if (data.quantity !== undefined) {
-                availabilityDiv.innerHTML = `
-                    <i class="bi bi-info-circle me-2"></i>
-                    <strong>Quantidade disponível:</strong> ${data.quantity} unidade(s)
-                `;
-                availabilityDiv.className = 'alert alert-info mt-2';
-                availabilityDiv.style.display = 'block';
-                quantityInput.max = data.quantity;
-            } else {
-                availabilityDiv.innerHTML = `
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    <strong>Produto sem estoque</strong>
-                `;
-                availabilityDiv.className = 'alert alert-warning mt-2';
-                availabilityDiv.style.display = 'block';
-            }
-        } catch (error) {
-            console.error('Erro:', error);
-        }
-    }
-    
-    productSelect.addEventListener('change', updateAvailability);
-    if (locationSelect) {
-        locationSelect.addEventListener('change', updateAvailability);
-    }
-    
-    if (productSelect.value) {
-        updateAvailability();
-    }
-});
-</script>
 {% endblock %}

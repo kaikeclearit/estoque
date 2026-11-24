@@ -1,0 +1,34 @@
+{% load pagination_tags %}
+{% comment %}
+Uso: {% include 'core/_pagination.html' with page=page_obj param='page' anchor='#tabela' extra_tab='' %}
+{% endcomment %}
+{% if page.paginator.num_pages > 1 %}
+<nav class="pager d-flex flex-column flex-sm-row align-items-center justify-content-between gap-2" aria-label="Paginação">
+    <span class="small text-muted tabular">
+        {{ page.start_index }}–{{ page.end_index }} de {{ page.paginator.count }}
+    </span>
+    <ul class="pagination pagination-sm mb-0">
+        {% if page.has_previous %}
+            <li class="page-item"><a class="page-link" href="{% if extra_tab %}{% page_url param page.previous_page_number tab=extra_tab %}{% else %}{% page_url param page.previous_page_number %}{% endif %}{{ anchor|default:'' }}" aria-label="Página anterior">&lsaquo;</a></li>
+        {% else %}
+            <li class="page-item disabled"><span class="page-link" aria-hidden="true">&lsaquo;</span></li>
+        {% endif %}
+
+        {% for n in page.paginator.page_range %}
+            {% if n == page.number %}
+                <li class="page-item active" aria-current="page"><span class="page-link"><span class="visually-hidden">Página </span>{{ n }}</span></li>
+            {% elif n == 1 or n == page.paginator.num_pages or n >= page.number|add:"-2" and n <= page.number|add:"2" %}
+                <li class="page-item"><a class="page-link" href="{% if extra_tab %}{% page_url param n tab=extra_tab %}{% else %}{% page_url param n %}{% endif %}{{ anchor|default:'' }}" aria-label="Página {{ n }}">{{ n }}</a></li>
+            {% elif n == page.number|add:"-3" or n == page.number|add:"3" %}
+                <li class="page-item disabled" aria-hidden="true"><span class="page-link">…</span></li>
+            {% endif %}
+        {% endfor %}
+
+        {% if page.has_next %}
+            <li class="page-item"><a class="page-link" href="{% if extra_tab %}{% page_url param page.next_page_number tab=extra_tab %}{% else %}{% page_url param page.next_page_number %}{% endif %}{{ anchor|default:'' }}" aria-label="Próxima página">&rsaquo;</a></li>
+        {% else %}
+            <li class="page-item disabled"><span class="page-link" aria-hidden="true">&rsaquo;</span></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}

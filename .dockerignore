@@ -1,0 +1,49 @@
+# Controle de versão e ferramentas
+.git
+.gitignore
+.github
+.vscode
+.idea
+.claude
+
+# Segredos e configuração local
+.env
+.env.*
+**/.env
+**/.env.*
+**/*secret*.yaml
+**/*secrets*.yaml
+**/local_settings.py
+
+# Dados reais / bancos locais
+*.xlsx
+**/*.xlsx
+*.csv
+**/*.sqlite3
+**/*.sqlite3-journal
+app/media/
+
+# Estáticos gerados localmente (são recriados pelo collectstatic no build)
+app/static/
+
+# Scripts de carga pontual (dependem de pandas, fora da imagem)
+importar.py
+app/importar.py
+
+# Artefatos Python
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/.mypy_cache
+.venv
+venv
+*.egg-info
+
+# Infra / docs que não pertencem à imagem
+nginx/
+nginx-docker/
+documentation/
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+*.md

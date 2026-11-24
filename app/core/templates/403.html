@@ -1,19 +1,15 @@
 {% extends 'core/base.html' %}
 
+{% block title %}Acesso negado{% endblock %}
+
 {% block content %}
-<div class="container text-center py-5">
-    <div class="display-1 text-secondary mb-3">
-        <i class="bi bi-shield-lock-fill"></i>
-    </div>
-    <h1 class="display-4 fw-bold">Acesso Negado</h1>
-    <p class="lead text-muted">
-        Ops! Você não tem permissão para acessar esta página.
+<div class="error-page">
+    <p class="error-code">Erro 403</p>
+    <h1 class="h3 mb-2">Acesso negado</h1>
+    <p class="text-muted mb-4">
+        Seu perfil não tem permissão para esta página ou ação.
+        Se precisar do acesso, fale com o administrador do sistema.
     </p>
-    <p class="mb-4">
-        Esta área é restrita a gestores. Se você acha que isso é um erro, contate o administrador.
-    </p>
-    <a href="{% url 'home' %}" class="btn btn-primary px-4">
-        <i class="bi bi-arrow-left"></i> Voltar para o Início
-    </a>
+    <a href="{% url 'home' %}" class="btn btn-primary">Voltar ao painel</a>
 </div>
 {% endblock %}

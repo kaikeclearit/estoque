@@ -4,6 +4,7 @@ from core.models import Client
 from core.forms import ClientForm
 from django.db.models import Q # <--- Importante para a busca
 from core.models import StockOut # Importe o modelo de Saída
+from core.pagination import paginate
 
 # 1. READ (Listar)
 def client_list(request):
@@ -51,8 +52,10 @@ def client_list(request):
         # Filtra por nome (icontains ignora maiúscula/minúscula)
         clients = clients.filter(name__icontains=search_query)
 
+    page_obj = paginate(request, clients)
     context = {
-        'clients': clients,
+        'clients': page_obj,
+        'page_obj': page_obj,
         'search_query': search_query # Devolve para manter escrito na caixinha
     }
     return render(request, 'core/clients/list.html', context)

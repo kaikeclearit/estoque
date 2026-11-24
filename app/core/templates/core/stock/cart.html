@@ -1,0 +1,204 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Saída de material{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Saída de material</h1>
+        <p class="page-meta">Monte o pedido com um ou mais itens e confirme tudo de uma vez.</p>
+    </div>
+    <div class="page-actions">
+        <a href="{% url 'movements_list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-clock-history me-1" aria-hidden="true"></i>Histórico
+        </a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <!-- 1. Adicionar item -->
+    <div class="col-lg-4">
+        <section class="card" aria-labelledby="passo1">
+            <div class="card-header">
+                <h2 class="step-title" id="passo1"><span class="step-num" aria-hidden="true">1</span>Adicionar item</h2>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'cart_add' %}" novalidate>
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label" for="id_product">{{ add_form.product.label }}</label>
+                        {{ add_form.product }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="id_location">{{ add_form.location.label }}</label>
+                        {{ add_form.location }}
+                    </div>
+                    <div class="mb-1">
+                        <label class="form-label" for="id_quantity">{{ add_form.quantity.label }}</label>
+                        {{ add_form.quantity }}
+                    </div>
+                    <div class="form-text tabular mb-3" id="stock-hint" aria-live="polite">&nbsp;</div>
+                    <button type="submit" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Adicionar ao pedido
+                    </button>
+                </form>
+            </div>
+        </section>
+    </div>
+
+    <!-- 2. Itens do pedido + 3. Confirmar -->
+    <div class="col-lg-8">
+        <section class="card mb-3" aria-labelledby="passo2">
+            <div class="card-header">
+                <h2 class="step-title" id="passo2"><span class="step-num" aria-hidden="true">2</span>Itens do pedido</h2>
+                {% if rows %}
+                <form method="post" action="{% url 'cart_clear' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-link btn-link-danger btn-sm p-0">Esvaziar pedido</button>
+                </form>
+                {% endif %}
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th scope="col">Produto</th>
+                            <th scope="col">Local</th>
+                            <th scope="col" class="num">Qtd.</th>
+                            <th scope="col" class="num">Saldo atual</th>
+                            <th scope="col" class="cell-actions"><span class="visually-hidden">Ações</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in rows %}
+                        <tr>
+                            <td>
+                                <span class="cell-title">{{ r.product.name }}</span>
+                                {% if r.product.model %}<span class="cell-sub">{{ r.product.model }}</span>{% endif %}
+                            </td>
+                            <td class="cell-code" title="{{ r.location.name }}">{{ r.location.code }}</td>
+                            <td class="num fw-semibold">{{ r.quantity }}</td>
+                            <td class="num">
+                                {{ r.available }}
+                                {% if not r.ok %}<span class="cell-sub text-danger fw-semibold">Saldo insuficiente</span>{% endif %}
+                            </td>
+                            <td class="cell-actions">
+                                <form method="post" action="{% url 'cart_remove' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="product_id" value="{{ r.product.pk }}">
+                                    <input type="hidden" name="location" value="{{ r.location.code }}">
+                                    <button type="submit" class="btn btn-icon btn-icon-danger" title="Remover" aria-label="Remover {{ r.product.name }}">
+                                        <i class="bi bi-x-lg" aria-hidden="true"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr class="empty-row">
+                            <td colspan="5">Nenhum item no pedido. Adicione produtos no passo 1.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    {% if rows %}
+                    <tfoot>
+                        <tr>
+                            <td colspan="2">{{ rows|length }} {{ rows|length|pluralize:"item,itens" }}</td>
+                            <td class="num">{{ total_units }}</td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                    {% endif %}
+                </table>
+            </div>
+        </section>
+
+        {% if rows %}
+        <section class="card" aria-labelledby="passo3">
+            <div class="card-header">
+                <h2 class="step-title" id="passo3"><span class="step-num" aria-hidden="true">3</span>Confirmar saída</h2>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{% url 'cart_checkout' %}" novalidate>
+                    {% csrf_token %}
+                    {% if checkout_form.non_field_errors %}<div class="alert alert-danger" role="alert"><i class="bi bi-exclamation-circle" aria-hidden="true"></i><div class="alert-body">{{ checkout_form.non_field_errors }}</div></div>{% endif %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="id_client">{{ checkout_form.client.label }}<span class="required-mark" aria-hidden="true">*</span></label>
+                            {{ checkout_form.client }}
+                            {% if checkout_form.client.errors %}<div class="field-error">{{ checkout_form.client.errors }}</div>{% endif %}
+                            <div class="form-text">Não encontrou? <a href="{% url 'client_create' %}">Cadastrar cliente</a>.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="id_movement_type">{{ checkout_form.movement_type.label }}</label>
+                            {{ checkout_form.movement_type }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="{{ checkout_form.project.id_for_label }}">{{ checkout_form.project.label }}</label>
+                            {{ checkout_form.project }}
+                        </div>
+                        <div class="col-md-6" id="scheduled-wrap">
+                            <label class="form-label" for="id_scheduled_date">{{ checkout_form.scheduled_date.label }}</label>
+                            {{ checkout_form.scheduled_date }}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="{{ checkout_form.observation.id_for_label }}">{{ checkout_form.observation.label }}</label>
+                            {{ checkout_form.observation }}
+                        </div>
+                    </div>
+                    {% if has_problem %}
+                    <div class="alert alert-danger mt-3 mb-0" role="alert">
+                        <i class="bi bi-exclamation-circle" aria-hidden="true"></i>
+                        <div class="alert-body">Há itens com saldo insuficiente. Ajuste o pedido antes de confirmar.</div>
+                    </div>
+                    {% endif %}
+                    <div class="form-actions mt-3 align-items-center">
+                        <button type="submit" class="btn btn-primary" {% if has_problem %}disabled{% endif %}>
+                            Confirmar saída de {{ rows|length }} {{ rows|length|pluralize:"item,itens" }}
+                        </button>
+                        <span class="form-text m-0">Se faltar saldo em algum item na confirmação, nenhum item é baixado.</span>
+                    </div>
+                </form>
+            </div>
+        </section>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (window.jQuery && $.fn.select2) {
+        $('#id_product').select2({ theme: 'bootstrap-5', placeholder: 'Digite para buscar o produto…', width: '100%' });
+        $('#id_client').select2({ theme: 'bootstrap-5', placeholder: 'Digite para buscar o cliente…', width: '100%' });
+    }
+
+    // Mostra o saldo disponível do produto na localidade escolhida
+    const product = document.getElementById('id_product');
+    const location = document.getElementById('id_location');
+    const hint = document.getElementById('stock-hint');
+    async function updateHint() {
+        if (!product.value || !location.value) { hint.innerHTML = '&nbsp;'; return; }
+        try {
+            const r = await fetch(`{% url 'product_stock_api' %}?product=${encodeURIComponent(product.value)}&location=${encodeURIComponent(location.value)}`);
+            const data = await r.json();
+            hint.textContent = `Disponível em ${location.value}: ${data.quantity ?? 0}`;
+            hint.classList.toggle('text-danger', !(data.quantity > 0));
+        } catch (e) { hint.textContent = ''; }
+    }
+    product.addEventListener('change', updateHint);
+    location.addEventListener('change', updateHint);
+    if (window.jQuery) $('#id_product').on('select2:select', updateHint);
+    updateHint();
+
+    // Data de devolução só para Empréstimo
+    const type = document.getElementById('id_movement_type');
+    const wrap = document.getElementById('scheduled-wrap');
+    if (type && wrap) {
+        const toggle = () => { wrap.hidden = type.value !== 'EMPRESTIMO'; };
+        type.addEventListener('change', toggle);
+        toggle();
+    }
+});
+</script>
+{% endblock %}

@@ -1,81 +1,71 @@
 {% extends 'core/base.html' %}
 
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card shadow border-0">
-            <div class="card-header {% if btn_class == 'btn-danger' %}bg-danger{% else %}bg-success{% endif %} text-white">
-                <h4 class="mb-0">
-                    <i class="bi {{ icon|default:'bi-box-arrow-in-down' }}"></i> {{ title }}
-                </h4>
-            </div>
-            
-            <div class="card-body bg-light">
-                <form method="post">
-                    {% csrf_token %}
-                    
-                    {% for field in form %}
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">{{ field.label }}</label>
-                        {{ field }}
-                        {% if field.errors %}
-                            <div class="text-danger small fw-bold mt-1">{{ field.errors }}</div>
-                        {% endif %}
-                        
-                        {% if field.name == 'client' %}
-                           <div class="form-text">
-                               Cliente não existe? 
-                               <a href="{% url 'client_create' %}">Cadastre aqui</a>.
-                           </div>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
+{% block title %}{{ title }}{% endblock %}
 
-                    <div class="d-grid gap-2 mt-4">
-                        <button type="submit" class="btn {{ btn_class|default:'btn-success' }} btn-lg">
-                            Confirmar
-                        </button>
-                        <a href="{% url 'product_list' %}" class="btn btn-outline-secondary">Cancelar</a>
-                    </div>
-                </form>
+{% block content %}
+<div class="page-header">
+    <div>
+        <nav aria-label="Trilha de navegação">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'movements_list' %}">Histórico</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ title }}</li>
+            </ol>
+        </nav>
+        <h1>{{ title }}</h1>
+    </div>
+</div>
+
+<div class="card form-panel-sm">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            {% include 'core/_form_fields.html' with form=form %}
+            <div class="form-actions">
+                <button type="submit" class="btn {% if btn_class == 'btn-danger' %}btn-danger{% else %}btn-primary{% endif %}">
+                    <i class="bi {{ icon|default:'bi-box-arrow-in-down' }} me-1" aria-hidden="true"></i>Confirmar
+                </button>
+                <a href="{% url 'product_list' %}" class="btn btn-outline-secondary">Cancelar</a>
             </div>
-        </div>
+        </form>
     </div>
 </div>
 {% endblock %}
+
 {% block scripts %}
 <script>
     $(document).ready(function() {
-        // --- 1. ATIVAR A BUSCA INTELIGENTE (Select2) ---
-        // Aplica no campo de Produto e Cliente
-        $('#id_product').select2({
+        // --- 1. Busca nos selects de Produto e Cliente (Select2) ---
+        // Inicializa por id (nunca pela classe .select2, que o plugin também usa).
+        // #id_product_entry é o id do campo de produto no formulário de entrada.
+        $('#id_product, #id_product_entry').select2({
             theme: 'bootstrap-5',
             placeholder: 'Digite para pesquisar o produto...',
-            allowClear: true
+            allowClear: true,
+            width: '100%'
         });
 
         $('#id_client').select2({
             theme: 'bootstrap-5',
             placeholder: 'Digite para pesquisar o cliente...',
-            allowClear: true
+            allowClear: true,
+            width: '100%'
         });
 
-        // --- 2. LÓGICA DO "IF" (RESERVA -> DATA) ---
+        // --- 2. Data prevista de devolução só aparece em EMPRÉSTIMO ---
         const typeSelect = document.getElementById('id_movement_type');
         const dateField = document.getElementById('id_scheduled_date');
-        
+
         // Só executa se os campos existirem na tela (na tela de Entrada eles não existem)
         if (typeSelect && dateField) {
             const dateContainer = dateField.closest('.mb-3'); // Pega a div pai
 
             function toggleDate() {
-                if (typeSelect.value === 'RESERVA') {
-                    // Se for Reserva, mostra com uma animação suave
-                    $(dateContainer).slideDown(); 
+                if (typeSelect.value === 'EMPRESTIMO') {
+                    dateContainer.hidden = false;
                 } else {
                     // Se não, esconde e limpa o campo
-                    $(dateContainer).slideUp();
-                    dateField.value = ''; 
+                    dateContainer.hidden = true;
+                    dateField.value = '';
                 }
             }
 
@@ -87,7 +77,4 @@
         }
     });
 </script>
-
 {% endblock %}
-$('#id_product').select2({ theme: 'bootstrap-5' }); // Saída
-$('#id_product_entry').select2({ theme: 'bootstrap-5' }); // Entrada (Novo)

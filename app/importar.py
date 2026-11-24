@@ -3,6 +3,7 @@
 Script de Migração - Excel para Banco de Dados
 Importa produtos, clientes e entradas do estoque
 """
+#comentario
 
 import pandas as pd
 import os
@@ -78,7 +79,7 @@ def importar_produtos(arquivo):
             if mao_qty > 0:
                 ProductStock.objects.update_or_create(
                     product=produto,
-                    location='MAO',
+                    location_id='MAO',
                     defaults={'quantity': mao_qty}
                 )
                 stocks_criados += 1
@@ -86,7 +87,7 @@ def importar_produtos(arquivo):
             if sp_qty > 0:
                 ProductStock.objects.update_or_create(
                     product=produto,
-                    location='SP',
+                    location_id='SP',
                     defaults={'quantity': sp_qty}
                 )
                 stocks_criados += 1
@@ -184,7 +185,7 @@ def importar_entradas(arquivo):
             StockEntry.objects.create(
                 product=produto,
                 quantity=quantidade,
-                location=armazem,
+                location_id=armazem,
                 entry_type='COMPRA',
                 nf_number=nf,
                 employee=usuario
@@ -273,7 +274,7 @@ def importar_saidas(arquivo):
             # Verificar se tem estoque suficiente
             stock = ProductStock.objects.filter(
                 product=produto,
-                location=armazem
+                location_id=armazem
             ).first()
             
             if not stock or stock.quantity < quantidade:
@@ -287,7 +288,7 @@ def importar_saidas(arquivo):
                 product=produto,
                 client=cliente,
                 quantity=quantidade,
-                location=armazem,
+                location_id=armazem,
                 movement_type=movement_type,
                 employee=usuario
             )
