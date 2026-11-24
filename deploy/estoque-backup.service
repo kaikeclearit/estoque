@@ -10,4 +10,6 @@ Environment=BACKUP_DIR=/var/backups/estoque
 Environment=BACKUP_KEEP_DAYS=30
 # Pasta de outro servidor/NAS já montada (NFS/SMB). Vazio = só local.
 Environment=BACKUP_COPY_TO=
+# Usuário SSH que pode ler os dumps (ex.: para o PC puxar via scp). Vazio = só root.
+Environment=BACKUP_OWNER=
 ExecStart=/bin/sh /opt/estoque/deploy/estoque-backup.sh

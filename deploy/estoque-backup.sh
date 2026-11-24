@@ -5,6 +5,8 @@
 # - Mantém BACKUP_KEEP_DAYS dias (padrão 30).
 # - Se BACKUP_COPY_TO estiver definido (pasta montada de outro servidor/NAS),
 #   copia o dump para lá também.
+# - Se BACKUP_OWNER estiver definido (usuário SSH da VM), os dumps ficam
+#   legíveis só por ele, para um PC/servidor externo puxar via scp.
 # Sai com erro se qualquer etapa falhar => aparece em "systemctl --failed".
 set -eu
 umask 077
@@ -13,6 +15,7 @@ DIR="${ESTOQUE_DIR:-/opt/estoque}"
 DEST="${BACKUP_DIR:-/var/backups/estoque}"
 KEEP_DAYS="${BACKUP_KEEP_DAYS:-30}"
 COPY_TO="${BACKUP_COPY_TO:-}"
+OWNER="${BACKUP_OWNER:-}"
 
 cd "$DIR"
 mkdir -p "$DEST"
@@ -32,6 +35,9 @@ fi
 docker compose exec -T db pg_restore --list < "$TMP" > /dev/null
 
 mv "$TMP" "$FINAL"
+if [ -n "$OWNER" ]; then
+    chown "$OWNER" "$DEST" "$DEST"/estoque-*.dump
+fi
 echo "backup: ok $FINAL ($(du -h "$FINAL" | cut -f1))"
 
 find "$DEST" -name 'estoque-*.dump' -mtime +"$KEEP_DAYS" -delete

@@ -5,6 +5,9 @@
 
 # Dados reais de estoque
 *.xlsx
+*.dump
+*.dump.part
+backups/
 
 # Segredos Kubernetes (versionar somente o template *.example.yaml)
 nginx/supply-secrets.yaml
