@@ -1,0 +1,13 @@
+[Unit]
+Description=Backup do banco do Sistema de Estoque ClearIT
+Requires=docker.service
+After=docker.service estoque.service
+
+[Service]
+Type=oneshot
+Environment=ESTOQUE_DIR=/opt/estoque
+Environment=BACKUP_DIR=/var/backups/estoque
+Environment=BACKUP_KEEP_DAYS=30
+# Pasta de outro servidor/NAS já montada (NFS/SMB). Vazio = só local.
+Environment=BACKUP_COPY_TO=
+ExecStart=/bin/sh /opt/estoque/deploy/estoque-backup.sh

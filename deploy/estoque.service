@@ -1,0 +1,18 @@
+# Sobe o Sistema de Estoque no boot da VM (depois do Docker).
+# Instalação: ver documentation/docs/DEPLOY-VM.md, seção 6.
+[Unit]
+Description=Sistema de Estoque ClearIT (docker compose)
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/estoque
+ExecStart=/usr/bin/docker compose up -d --no-build
+ExecStop=/usr/bin/docker compose stop
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

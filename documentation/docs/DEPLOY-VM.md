@@ -4,8 +4,8 @@ Sistema de Estoque ClearIT rodando numa VM única, no IP **10.11.10.10**
 (o mesmo da antiga VM no VMware). App (Gunicorn + WhiteNoise) e Postgres em
 containers; acesso em `http://10.11.10.10`.
 
-> Alternativa: o mesmo sistema pode rodar no Kubernetes (NKP) com os manifests
-> da pasta `nginx/`. Este guia cobre só a VM.
+> Produção roda **só na VM** com Docker Compose. Os manifests da pasta `nginx/`
+> (Kubernetes) não estão em uso.
 
 ---
 
@@ -124,25 +124,108 @@ Pós-vendas, Pré-vendas). Quem estava no grupo antigo "Gestores" já vira
 
 ---
 
-## 6. Backup diário
+## 6. Subida automática (nunca mais dar `up` na mão)
 
+Três camadas, cada uma cobre uma falha diferente:
+
+| Camada | Cobre |
+|---|---|
+| `restart: always` no compose (web e db) | processo/container caiu → Docker reinicia na hora |
+| `estoque.service` (systemd) | VM reiniciou, ou alguém rodou `docker compose down` antes do reboot |
+| `estoque-watchdog.timer` (a cada 2 min) | container parado/removido, ou web travado (`unhealthy`) |
+
+Instalação (uma vez; se o projeto **não** estiver em `/opt/estoque`, ajuste
+`WorkingDirectory`, `ESTOQUE_DIR` e o caminho do script nos arquivos de `deploy/`):
 ```bash
-sudo mkdir -p /opt/estoque-backups && sudo chown $USER /opt/estoque-backups
-crontab -e
+sudo systemctl enable docker containerd
+sudo cp /opt/estoque/deploy/estoque.service \
+        /opt/estoque/deploy/estoque-watchdog.service \
+        /opt/estoque/deploy/estoque-watchdog.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now estoque.service estoque-watchdog.timer
 ```
+
+Teste (faça agora, não no dia do problema):
+```bash
+docker compose kill web; sleep 5; docker compose ps          # web volta sozinho
+docker compose down; sudo systemctl start estoque-watchdog.service; docker compose ps   # volta
+sudo reboot        # depois: curl -I http://localhost/login/  -> 200, sem rodar nada
+journalctl -u estoque-watchdog.service --since today          # histórico do vigia
 ```
-0 2 * * * cd /opt/estoque && docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > /opt/estoque-backups/estoque-$(date +\%F).dump && find /opt/estoque-backups -name '*.dump' -mtime +30 -delete
-```
-Guarde cópias fora da VM (snapshot/Protection Domain do Nutanix ajuda, mas não
-substitui o dump).
+
+No Nutanix, ligue também o **HA** do cluster para a VM: se o host físico cair,
+a VM liga em outro host e as camadas acima sobem o sistema.
 
 ---
 
-## 7. Atualizar a versão
+## 7. Backup diário
+
+`deploy/estoque-backup.sh` roda todo dia às 02:00 (timer do systemd; se a VM
+estava desligada nesse horário, roda assim que ligar):
+- `pg_dump` validado com `pg_restore --list` (dump corrompido não é aceito);
+- guarda em `/var/backups/estoque`, 30 dias;
+- opcional: copia para uma pasta de outro servidor/NAS (`BACKUP_COPY_TO`).
+
+Instalação (troca `/opt/estoque` pelo caminho real do projeto):
+```bash
+cd ~/estoque
+D=$(pwd)
+for f in estoque-backup.service estoque-backup.timer; do
+  sed "s#/opt/estoque#$D#g" deploy/$f | sudo tee /etc/systemd/system/$f >/dev/null
+done
+sudo systemctl daemon-reload
+sudo systemctl enable --now estoque-backup.timer
+sudo systemctl start estoque-backup.service      # primeiro backup agora
+journalctl -u estoque-backup.service -n 5 --no-pager   # "backup: ok ..."
+sudo ls -lh /var/backups/estoque
+```
+Acompanhar: `systemctl list-timers estoque-backup.timer` (próxima execução) e
+`systemctl --failed` (aparece se algum backup falhar).
+
+### 7.1 Cópia fora da VM (obrigatório)
+Backup só dentro da VM não protege contra perda da VM/disco. Escolha um:
+- **Pasta de rede:** monte um NFS/SMB do NAS/servidor de arquivos (ex.: em
+  `/mnt/backup-estoque`, via `/etc/fstab`) e defina
+  `Environment=BACKUP_COPY_TO=/mnt/backup-estoque` em
+  `/etc/systemd/system/estoque-backup.service`, depois `sudo systemctl daemon-reload`.
+- **Ferramenta de backup corporativa** (Veeam, Commvault etc.): incluir a pasta
+  `/var/backups/estoque` no job da VM.
+- **Snapshot/Protection Domain do Nutanix:** complementa, mas não substitui o dump.
+
+Guarde também uma cópia do `.env` em local seguro (cofre de senhas): sem a
+`DJANGO_SECRET_KEY` e a senha do banco, restaurar fica mais trabalhoso.
+
+### 7.2 Testar a restauração (faça uma vez agora e depois a cada poucos meses)
+Restaura num banco temporário, sem tocar no de produção:
+```bash
+cd ~/estoque
+ULTIMO=$(sudo ls -t /var/backups/estoque/estoque-*.dump | head -1)
+docker compose exec -T db sh -c 'createdb -U "$POSTGRES_USER" teste_restore'
+sudo cat "$ULTIMO" | docker compose exec -T db sh -c \
+  'pg_restore --no-owner -U "$POSTGRES_USER" -d teste_restore'
+docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d teste_restore \
+  -c "select count(*) as produtos from core_product;"'
+docker compose exec -T db sh -c 'dropdb -U "$POSTGRES_USER" teste_restore'
+```
+
+### 7.3 Restaurar de verdade (desastre)
+```bash
+sudo systemctl stop estoque-watchdog.timer   # senão o vigia religa o web no meio
+docker compose stop web
+docker compose exec -T db sh -c 'dropdb -U "$POSTGRES_USER" "$POSTGRES_DB" && createdb -U "$POSTGRES_USER" "$POSTGRES_DB"'
+sudo cat /var/backups/estoque/estoque-<DATA>.dump | docker compose exec -T db sh -c \
+  'pg_restore --no-owner -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+docker compose start web
+sudo systemctl start estoque-watchdog.timer
+```
+
+---
+
+## 8. Atualizar a versão
 
 ```bash
 cd /opt/estoque
-docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > ../estoque-backups/antes-update.dump
+sudo systemctl start estoque-backup.service   # backup antes de atualizar
 git pull
 docker compose up -d --build      # o serviço migrate roda as migrations novas
 ```
@@ -151,7 +234,7 @@ docker compose up -d --build      # o serviço migrate roda as migrations novas
 
 | Sintoma | Causa provável |
 |---|---|
-| `Bad Request (400)` | Host/IP usado não está em `DJANGO_ALLOWED_HOSTS` |
+| `Bad Request (400)` | Host/IP usado não está em `DJANGO_ALLOWED_HOSTS` (inclua `localhost,127.0.0.1` para testar de dentro da VM) |
 | Login volta para a tela de login / erro 403 CSRF | `DJANGO_SECURE_COOKIES=true` com acesso por http, ou origem faltando em `DJANGO_CSRF_TRUSTED_ORIGINS` |
 | Container `web` reinicia em loop com "ERRO: DJANGO_SECRET_KEY..." | `.env` sem chave ou com menos de 50 caracteres |
 | Acesso intermitente ao 10.11.10.10 | VM antiga ainda ligada com o mesmo IP |
