@@ -1,12 +1,24 @@
+# Entrada do sistema: IP fixo 10.11.10.10 (o mesmo da antiga VM no VMware),
+# entregue pelo MetalLB do NKP. Assim links, favoritos e regras de firewall/proxy
+# que apontavam para 10.11.10.10 continuam valendo.
+#
+# Pré-requisitos (ver checklist):
+#  - 10.11.10.10 precisa estar dentro de um IPAddressPool do MetalLB
+#    (kubectl get ipaddresspools -A) e na mesma rede L2 dos nós (ou roteada);
+#  - a VM antiga do VMware precisa estar DESLIGADA (senão há conflito de IP/ARP).
 apiVersion: v1
 kind: Service
 metadata:
   name: supply-app-service
-  namespace: lab-tjce-bqzsv
+  labels:
+    app: supply-app
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: "10.11.10.10"
 spec:
   type: LoadBalancer
-  ports:
-  - port: 80
-    targetPort: 80
   selector:
     app: supply-app
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

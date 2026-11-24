@@ -1,3 +1,24 @@
-.env*
+# Variáveis de ambiente locais
+.env
+.env.*
+!.env.example
+
+# Dados reais de estoque
 *.xlsx
-supply-secret.yaml
+
+# Segredos Kubernetes (versionar somente o template *.example.yaml)
+nginx/supply-secrets.yaml
+*secret*.yaml
+*secrets*.yaml
+!*.example.yaml
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Banco local e arquivos gerados
+*.sqlite3
+app/static/
+app/media/

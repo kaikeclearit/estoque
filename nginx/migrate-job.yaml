@@ -1,0 +1,78 @@
+# Job de migrations - FORA do kustomization (Jobs são imutáveis).
+# A cada deploy: ajuste a tag da imagem, apague o Job anterior e aplique:
+#   kubectl -n lab-tjce-bqzsv delete job supply-migrate --ignore-not-found
+#   kubectl -n lab-tjce-bqzsv apply -f nginx/migrate-job.yaml
+#   kubectl -n lab-tjce-bqzsv wait --for=condition=complete job/supply-migrate --timeout=10m
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: supply-migrate
+  namespace: lab-tjce-bqzsv
+  labels:
+    app: supply-migrate
+    app.kubernetes.io/part-of: estoque-clearit
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 900
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: supply-migrate
+        estoque/db-client: "true"
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: migrate
+          image: kaikeclear/estoque-app:v5
+          imagePullPolicy: IfNotPresent
+          # entrypoint valida SECRET_KEY/DEBUG/DB; check --deploy registra os
+          # avisos de segurança no log e falha em erros; depois migra.
+          command: ["/app_root/app/entrypoint.sh"]
+          args:
+            - sh
+            - -c
+            - python manage.py check --deploy --fail-level ERROR && python manage.py migrate --noinput
+          envFrom:
+            - configMapRef:
+                name: supply-config
+          env:
+            - name: DJANGO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: supply-secrets
+                  key: DJANGO_SECRET_KEY
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: supply-secrets
+                  key: DATABASE_USER
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: supply-secrets
+                  key: DATABASE_PASSWORD
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

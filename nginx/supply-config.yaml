@@ -2,9 +2,26 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: supply-config
-  namespace: lab-tjce-bqzsv
 data:
+  # Banco (usuário/senha ficam no Secret supply-secrets)
   DATABASE_NAME: "postgres_db_stock"
-  DATABASE_PORT: "5432"
-  # IMPORTANT: Ensure "postgres-service" matches your actual Postgres Service name
   DATABASE_HOST: "postgres"
+  DATABASE_PORT: "5432"
+
+  # Django
+  DEBUG: "false"
+  DJANGO_ALLOWED_HOSTS: "10.11.10.10,estoque.clearit.com.br"
+  DJANGO_CSRF_TRUSTED_ORIGINS: "http://10.11.10.10,https://estoque.clearit.com.br"
+  DJANGO_LOG_LEVEL: "INFO"
+  # Cookies só via HTTPS. Exige que o acesso seja feito por https:// (TLS no
+  # Ingress ou em um proxy à frente). Se ainda houver acesso por http, use
+  # "false" temporariamente, senão o login não funciona.
+  DJANGO_SECURE_COOKIES: "false"   # acesso por http://10.11.10.10; mudar para "true" quando só houver HTTPS
+  # O redirecionamento http->https deve ser feito pelo Ingress. Ligue aqui
+  # apenas se o Ingress não o fizer.
+  DJANGO_SECURE_SSL_REDIRECT: "false"
+  # HSTS: ligar (ex.: "31536000") só depois de validar o TLS em produção.
+  DJANGO_SECURE_HSTS_SECONDS: "0"
+
+  # Gunicorn: nº de workers (2-4 por vCPU de limite)
+  WEB_CONCURRENCY: "3"

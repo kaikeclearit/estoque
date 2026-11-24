@@ -1,38 +1,48 @@
-version: '3.8'
-
+# Ambiente de DESENVOLVIMENTO: runserver com hot-reload e código montado.
+# Uso: docker compose -f docker-compose.dev.yml up --build
+# Variáveis opcionais em .env.dev (NÃO versionado).
 services:
   web:
-    build: .
-    command: gunicorn setup.wsgi:application --bind 0.0.0.0:8000
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py runserver 0.0.0.0:8000"
     volumes:
-      - ./app:/app            # Hot-reload (opcional em prod, útil em dev)
-      - static_volume:/app/static  # Compartilha estáticos com o Nginx
-      - media_volume:/app/media    # Compartilha uploads com o Nginx
-    env_file:
-      - .env
+      # Mesmo caminho do WORKDIR da imagem (/app_root/app).
+      - ./app:/app_root/app
+    environment:
+      DEBUG: "true"
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
+      DJANGO_CSRF_TRUSTED_ORIGINS: "http://localhost:8000,http://127.0.0.1:8000"
+      DATABASE_NAME: estoque_dev
+      DATABASE_USER: estoque_dev
+      DATABASE_PASSWORD: estoque_dev_local
+      DATABASE_HOST: db
+      DATABASE_PORT: "5432"
+    ports:
+      - "8000:8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   db:
-    image: postgres:15
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+    image: postgres:15.20-trixie
     environment:
-      - POSTGRES_DB=meubanco
-      - POSTGRES_USER=usuario
-      - POSTGRES_PASSWORD=senha_secreta
-
-  nginx:
-    build: ./nginx
+      # Credenciais apenas para o banco local descartável de desenvolvimento.
+      POSTGRES_DB: estoque_dev
+      POSTGRES_USER: estoque_dev
+      POSTGRES_PASSWORD: estoque_dev_local
     volumes:
-      - static_volume:/app/static  # Nginx lê daqui
-      - media_volume:/app/media    # Nginx lê daqui
+      - postgres_data_dev:/var/lib/postgresql/data
     ports:
-      - "80:80"
-    depends_on:
-      - web
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
-  postgres_data:
-  static_volume:
-  media_volume:
+  postgres_data_dev:

@@ -2,9 +2,14 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: postgres
-  namespace: lab-tjce-bqzsv
+  labels:
+    app: postgres
 spec:
   replicas: 1
+  # Volume RWO: o pod antigo precisa sair antes do novo montar o PVC
+  # (evita Multi-Attach error do RollingUpdate).
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: postgres
@@ -13,36 +18,81 @@ spec:
       labels:
         app: postgres
     spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
-      - name: postgres # Changed this from 'web'
-        image: postgres:15 # THE FIX: Using the official Database image!
-        env:
-        # We explicitly define the Postgres variables so it creates the right database on boot
-        - name: POSTGRES_DB
-          value: "postgres_db_stock"
-        - name: POSTGRES_USER
-          value: "clear_stock"
-        - name: POSTGRES_PASSWORD
-          value: "postgres_cleardb123"
-        - name: PGDATA
-          value: "/var/lib/postgresql/data/pgdata"
-        ports:
-        - containerPort: 5432
-        volumeMounts:
-        - name: pgdata
-          mountPath: /var/lib/postgresql/data
+        - name: postgres
+          # Mesma major (15). Atualize a minor conscientemente.
+          image: postgres:15.20-trixie
+          imagePullPolicy: IfNotPresent
+          env:
+            # POSTGRES_* só têm efeito na primeira inicialização do volume.
+            # Trocar a senha depois exige ALTER USER no banco (ver relatório).
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: supply-config
+                  key: DATABASE_NAME
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: supply-secrets
+                  key: DATABASE_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: supply-secrets
+                  key: DATABASE_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - name: postgres
+              containerPort: 5432
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -h 127.0.0.1 -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -h 127.0.0.1 -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+          securityContext:
+            # A imagem oficial inicia como root e troca para o usuário
+            # postgres (gosu); por isso não é forçado runAsNonRoot aqui.
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
       volumes:
-      - name: pgdata
-        persistentVolumeClaim:
-          claimName: postgres-data
+        - name: pgdata
+          persistentVolumeClaim:
+            claimName: postgres-data
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: postgres # <--- THIS IS YOUR DATABASE'S NETWORK NAME!
-  namespace: lab-tjce-bqzsv
+  name: postgres
+  labels:
+    app: postgres
 spec:
-  ports:
-  - port: 5432
+  type: ClusterIP
   selector:
     app: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
