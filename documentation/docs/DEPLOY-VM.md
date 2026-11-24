@@ -160,15 +160,64 @@ a VM liga em outro host e as camadas acima sobem o sistema.
 
 ## 7. Backup diário
 
+`deploy/estoque-backup.sh` roda todo dia às 02:00 (timer do systemd; se a VM
+estava desligada nesse horário, roda assim que ligar):
+- `pg_dump` validado com `pg_restore --list` (dump corrompido não é aceito);
+- guarda em `/var/backups/estoque`, 30 dias;
+- opcional: copia para uma pasta de outro servidor/NAS (`BACKUP_COPY_TO`).
+
+Instalação (troca `/opt/estoque` pelo caminho real do projeto):
 ```bash
-sudo mkdir -p /opt/estoque-backups && sudo chown $USER /opt/estoque-backups
-crontab -e
+cd ~/estoque
+D=$(pwd)
+for f in estoque-backup.service estoque-backup.timer; do
+  sed "s#/opt/estoque#$D#g" deploy/$f | sudo tee /etc/systemd/system/$f >/dev/null
+done
+sudo systemctl daemon-reload
+sudo systemctl enable --now estoque-backup.timer
+sudo systemctl start estoque-backup.service      # primeiro backup agora
+journalctl -u estoque-backup.service -n 5 --no-pager   # "backup: ok ..."
+sudo ls -lh /var/backups/estoque
 ```
+Acompanhar: `systemctl list-timers estoque-backup.timer` (próxima execução) e
+`systemctl --failed` (aparece se algum backup falhar).
+
+### 7.1 Cópia fora da VM (obrigatório)
+Backup só dentro da VM não protege contra perda da VM/disco. Escolha um:
+- **Pasta de rede:** monte um NFS/SMB do NAS/servidor de arquivos (ex.: em
+  `/mnt/backup-estoque`, via `/etc/fstab`) e defina
+  `Environment=BACKUP_COPY_TO=/mnt/backup-estoque` em
+  `/etc/systemd/system/estoque-backup.service`, depois `sudo systemctl daemon-reload`.
+- **Ferramenta de backup corporativa** (Veeam, Commvault etc.): incluir a pasta
+  `/var/backups/estoque` no job da VM.
+- **Snapshot/Protection Domain do Nutanix:** complementa, mas não substitui o dump.
+
+Guarde também uma cópia do `.env` em local seguro (cofre de senhas): sem a
+`DJANGO_SECRET_KEY` e a senha do banco, restaurar fica mais trabalhoso.
+
+### 7.2 Testar a restauração (faça uma vez agora e depois a cada poucos meses)
+Restaura num banco temporário, sem tocar no de produção:
+```bash
+cd ~/estoque
+ULTIMO=$(sudo ls -t /var/backups/estoque/estoque-*.dump | head -1)
+docker compose exec -T db sh -c 'createdb -U "$POSTGRES_USER" teste_restore'
+sudo cat "$ULTIMO" | docker compose exec -T db sh -c \
+  'pg_restore --no-owner -U "$POSTGRES_USER" -d teste_restore'
+docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d teste_restore \
+  -c "select count(*) as produtos from core_product;"'
+docker compose exec -T db sh -c 'dropdb -U "$POSTGRES_USER" teste_restore'
 ```
-0 2 * * * cd /opt/estoque && docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > /opt/estoque-backups/estoque-$(date +\%F).dump && find /opt/estoque-backups -name '*.dump' -mtime +30 -delete
+
+### 7.3 Restaurar de verdade (desastre)
+```bash
+sudo systemctl stop estoque-watchdog.timer   # senão o vigia religa o web no meio
+docker compose stop web
+docker compose exec -T db sh -c 'dropdb -U "$POSTGRES_USER" "$POSTGRES_DB" && createdb -U "$POSTGRES_USER" "$POSTGRES_DB"'
+sudo cat /var/backups/estoque/estoque-<DATA>.dump | docker compose exec -T db sh -c \
+  'pg_restore --no-owner -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+docker compose start web
+sudo systemctl start estoque-watchdog.timer
 ```
-Guarde cópias fora da VM (snapshot/Protection Domain do Nutanix ajuda, mas não
-substitui o dump).
 
 ---
 
@@ -176,7 +225,7 @@ substitui o dump).
 
 ```bash
 cd /opt/estoque
-docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > ../estoque-backups/antes-update.dump
+sudo systemctl start estoque-backup.service   # backup antes de atualizar
 git pull
 docker compose up -d --build      # o serviço migrate roda as migrations novas
 ```

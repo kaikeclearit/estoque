@@ -1,0 +1,11 @@
+[Unit]
+Description=Backup diário do Sistema de Estoque (02:00)
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+# Se a VM estava desligada às 02:00, roda assim que ligar.
+Persistent=true
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target
